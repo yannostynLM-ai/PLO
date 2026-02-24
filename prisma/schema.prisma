@@ -1,0 +1,459 @@
+// =============================================================================
+// PLO — Project Lifecycle Orchestrator
+// Schéma Prisma v1.0 — Sprint 1
+// PostgreSQL 15+ | Prisma 5+
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum ProjectStatus {
+  draft
+  active
+  on_hold
+  completed
+  cancelled
+}
+
+enum ProjectType {
+  kitchen
+  bathroom
+  energy_renovation
+  other
+}
+
+enum ChannelOrigin {
+  store
+  web
+  mixed
+}
+
+enum OrderStatus {
+  draft
+  confirmed
+  in_fulfillment
+  delivered
+  installed
+  closed
+  cancelled
+}
+
+enum StockStatus {
+  available
+  shortage
+  backordered
+}
+
+enum OriginType {
+  warehouse
+  store
+  supplier
+  crossdock_station
+}
+
+enum ShipmentStatus {
+  pending
+  dispatched
+  in_transit
+  arrived
+  exception
+}
+
+enum ConsolidationStatus {
+  waiting
+  in_progress
+  complete
+  partial_approved
+}
+
+enum LastMileStatus {
+  pending
+  scheduled
+  in_transit
+  delivered
+  failed
+  partial_delivered
+}
+
+enum InstallationStatus {
+  pending
+  scheduled
+  in_progress
+  completed
+  cancelled
+}
+
+enum StepStatus {
+  pending
+  in_progress
+  completed
+  anomaly
+  skipped
+}
+
+enum EventSeverity {
+  info
+  warning
+  critical
+}
+
+enum EventSource {
+  erp
+  oms
+  tms
+  tms_lastmile
+  wfm
+  crm
+  ecommerce
+  inspiration_tool
+  manual
+}
+
+enum AnomalyScope {
+  project
+  order
+  consolidation
+  lastmile
+  installation
+}
+
+enum AnomalySeverity {
+  warning
+  critical
+}
+
+enum NotificationChannel {
+  email
+  crm_ticket
+  internal_alert
+}
+
+enum NotificationStatus {
+  pending
+  sent
+  failed
+}
+
+// =============================================================================
+// ENTITÉS
+// =============================================================================
+
+// 1. Project — Dossier client
+model Project {
+  id             String        @id @default(uuid())
+  channel_origin ChannelOrigin
+  store_id       String?
+  customer_id    String
+  project_type   ProjectType
+  status         ProjectStatus @default(draft)
+  metadata       Json?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  external_refs    ProjectExternalRef[]
+  orders           Order[]
+  consolidation    Consolidation?
+  last_mile        LastMileDelivery?
+  installation     Installation?
+  steps            Step[]
+  events           Event[]
+  notifications    Notification[]
+
+  @@map("projects")
+}
+
+// 2. ProjectExternalRef — Mapping cross-systèmes
+// Permet de retrouver un projet depuis n'importe quelle référence externe
+model ProjectExternalRef {
+  id         String  @id @default(uuid())
+  project_id String
+  source     String  // erp, crm, ecommerce, store, etc.
+  ref        String  // Référence dans le système source
+
+  created_at DateTime @default(now())
+
+  // Relations
+  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@unique([source, ref])
+  @@map("project_external_refs")
+}
+
+// 3. Order — Commande
+model Order {
+  id                      String      @id @default(uuid())
+  project_id              String
+  erp_order_ref           String?
+  ecommerce_order_ref     String?
+  status                  OrderStatus @default(draft)
+  delivery_address        Json
+  installation_address    Json?
+  installation_required   Boolean     @default(false)
+  lead_time_days          Int?
+  promised_delivery_date  DateTime?
+  promised_installation_date DateTime?
+  metadata                Json?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  project       Project        @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  lines         OrderLine[]
+  shipments     Shipment[]
+  steps         Step[]
+  events        Event[]
+  notifications Notification[]
+
+  @@map("orders")
+}
+
+// 4. OrderLine — Ligne de commande
+model OrderLine {
+  id                   String      @id @default(uuid())
+  order_id             String
+  sku                  String
+  label                String
+  quantity             Int
+  unit_price           Decimal     @db.Decimal(12, 2)
+  installation_required Boolean    @default(false)
+  stock_status         StockStatus @default(available)
+  metadata             Json?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  order Order @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  @@map("order_lines")
+}
+
+// 5. Shipment — Tronçon de transport
+// Un Order peut avoir N Shipments (cross-docking possible)
+model Shipment {
+  id                     String         @id @default(uuid())
+  order_id               String
+  project_id             String         // Dénormalisé pour requêtes projet-level
+  oms_ref                String?
+  leg_number             Int            @default(1)
+  origin_type            OriginType
+  origin_ref             String
+  destination_station_id String
+  carrier                String?
+  carrier_tracking_ref   String?
+  status                 ShipmentStatus @default(pending)
+  estimated_arrival      DateTime?
+  actual_arrival         DateTime?
+  metadata               Json?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  order Order @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  @@map("shipments")
+}
+
+// 6. Consolidation — Agrégation en delivery station (niveau Project)
+// Une seule Consolidation active par projet
+model Consolidation {
+  id                       String              @id @default(uuid())
+  project_id               String              @unique
+  station_id               String
+  station_name             String
+  status                   ConsolidationStatus @default(waiting)
+  orders_required          String[]            // UUID[] des order_id attendus
+  orders_arrived           String[]            @default([]) // UUID[] arrivés
+  estimated_complete_date  DateTime?
+  partial_delivery_approved Boolean            @default(false)
+  partial_approved_by      Json?               // { customer, installer, approved_at }
+  metadata                 Json?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  project   Project            @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  last_mile LastMileDelivery[]
+
+  @@map("consolidations")
+}
+
+// 7. LastMileDelivery — Livraison client finale (niveau Project)
+model LastMileDelivery {
+  id                String         @id @default(uuid())
+  project_id        String         @unique
+  consolidation_id  String
+  tms_delivery_ref  String?
+  carrier           String?
+  status            LastMileStatus @default(pending)
+  delivery_address  Json
+  scheduled_date    DateTime?
+  scheduled_slot    Json?          // { start: "HH:MM", end: "HH:MM" }
+  is_partial        Boolean        @default(false)
+  missing_order_ids String[]       @default([])
+  delivered_at      DateTime?
+  pod_url           String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  project       Project       @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  consolidation Consolidation @relation(fields: [consolidation_id], references: [id])
+
+  @@map("last_mile_deliveries")
+}
+
+// 8. Installation — Intervention à domicile (niveau Project, optionnelle)
+model Installation {
+  id                   String             @id @default(uuid())
+  project_id           String             @unique
+  status               InstallationStatus @default(pending)
+  installation_address Json
+  scheduled_date       DateTime?
+  scheduled_slot       Json?              // { start: "HH:MM", end: "HH:MM" }
+  technician_id        String?
+  technician_name      String?
+  wfm_job_ref          String?
+  orders_prerequisite  String[]           @default([]) // order_id requis avant intervention
+  started_at           DateTime?
+  completed_at         DateTime?
+  report               Json?              // InstallationReport
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  project       Project        @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  steps         Step[]
+  events        Event[]
+  notifications Notification[]
+
+  @@map("installations")
+}
+
+// 9. Step — Étape du cycle de vie
+// CONTRAINTE XOR : exactement un parmi (project_id, order_id, installation_id) doit être non-null
+// Cette contrainte est validée au niveau applicatif (src/lib/validators.ts)
+// car Prisma ne supporte pas nativement les CHECK constraints complexes
+model Step {
+  id              String     @id @default(uuid())
+  project_id      String?    // Non-null si step rattaché au Project
+  order_id        String?    // Non-null si step rattaché à une Order
+  installation_id String?    // Non-null si step rattaché à une Installation
+  step_type       String     // Type sémantique : string extensible sans migration
+  status          StepStatus @default(pending)
+  expected_at     DateTime?
+  completed_at    DateTime?
+  assigned_to     String?
+  metadata        Json?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  project      Project?      @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  order        Order?        @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  installation Installation? @relation(fields: [installation_id], references: [id], onDelete: Cascade)
+  events       Event[]
+
+  @@index([project_id])
+  @@index([order_id])
+  @@index([installation_id])
+  @@index([step_type])
+  @@map("steps")
+}
+
+// 10. Event — Événement horodaté
+// Déduplication sur (source, source_ref)
+model Event {
+  id              String        @id @default(uuid())
+  project_id      String
+  order_id        String?
+  installation_id String?
+  step_id         String?
+  event_type      String        // String extensible : pas d'enum SQL
+  source          EventSource
+  source_ref      String?
+  severity        EventSeverity @default(info)
+  payload         Json?
+  processed_at    DateTime?
+  acknowledged_by String?
+
+  created_at DateTime @default(now())
+
+  // Relations
+  project       Project?       @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  order         Order?         @relation(fields: [order_id], references: [id])
+  installation  Installation?  @relation(fields: [installation_id], references: [id])
+  step          Step?          @relation(fields: [step_id], references: [id])
+  notifications Notification[]
+
+  // Déduplication : un même événement source ne peut être ingéré deux fois
+  @@unique([source, source_ref], name: "dedup_source_ref")
+  @@index([project_id])
+  @@index([event_type])
+  @@index([severity])
+  @@map("events")
+}
+
+// 11. AnomalyRule — Règle d'anomalie configurable
+model AnomalyRule {
+  id        String          @id @default(uuid())
+  name      String
+  scope     AnomalyScope
+  step_type String
+  condition Json            // Condition déclenchante (délai, event manquant, combinaison…)
+  severity  AnomalySeverity
+  action    Json            // Actions à déclencher (notification, escalade, blocage…)
+  active    Boolean         @default(true)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  notifications Notification[]
+
+  @@map("anomaly_rules")
+}
+
+// 12. Notification — Notification sortante
+model Notification {
+  id              String              @id @default(uuid())
+  project_id      String
+  order_id        String?
+  installation_id String?
+  event_id        String?
+  rule_id         String?
+  channel         NotificationChannel
+  recipient       String
+  status          NotificationStatus  @default(pending)
+  sent_at         DateTime?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  project      Project?      @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  order        Order?        @relation(fields: [order_id], references: [id])
+  installation Installation? @relation(fields: [installation_id], references: [id])
+  event        Event?        @relation(fields: [event_id], references: [id])
+  rule         AnomalyRule?  @relation(fields: [rule_id], references: [id])
+
+  @@map("notifications")
+}
