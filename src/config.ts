@@ -2,6 +2,8 @@
 // PLO — Configuration centralisée (chargée depuis process.env / .env)
 // =============================================================================
 
+import type { EventSource } from "@prisma/client";
+
 function required(key: string): string {
   const value = process.env[key];
   if (!value) throw new Error(`Missing required env variable: ${key}`);
@@ -10,6 +12,30 @@ function required(key: string): string {
 
 function optional(key: string, fallback: string): string {
   return process.env[key] ?? fallback;
+}
+
+// Construction dynamique du mapping API key → source
+// Les sources Sprint 2 sont obligatoires ; les sources Sprint 5 sont optionnelles.
+function buildApiKeys(): Record<string, EventSource> {
+  const keys: Record<string, EventSource> = {
+    [required("API_KEY_ERP")]: "erp",
+    [required("API_KEY_OMS")]: "oms",
+    [required("API_KEY_TMS_LASTMILE")]: "tms_lastmile",
+    [required("API_KEY_MANUAL")]: "manual",
+  };
+
+  // Sprint 5 — optionnels : ne pas démarrer si absent
+  const optionalSources: Array<[string, EventSource]> = [
+    ["API_KEY_WFM", "wfm"],
+    ["API_KEY_CRM", "crm"],
+    ["API_KEY_ECOMMERCE", "ecommerce"],
+  ];
+  for (const [envKey, source] of optionalSources) {
+    const val = process.env[envKey];
+    if (val) keys[val] = source;
+  }
+
+  return keys;
 }
 
 export const config = {
@@ -24,12 +50,7 @@ export const config = {
   HOST: optional("HOST", "0.0.0.0"),
 
   // API Keys par source — utilisées pour l'authentification Bearer
-  API_KEYS: {
-    [required("API_KEY_ERP")]: "erp" as const,
-    [required("API_KEY_OMS")]: "oms" as const,
-    [required("API_KEY_TMS_LASTMILE")]: "tms_lastmile" as const,
-    [required("API_KEY_MANUAL")]: "manual" as const,
-  },
+  API_KEYS: buildApiKeys(),
 
   // SMTP — Notifications email (vide = mode console)
   SMTP_HOST: optional("SMTP_HOST", ""),
@@ -46,6 +67,6 @@ export const config = {
     manager: optional("ALERT_EMAIL_MANAGER", "manager@example.fr"),
     ops: optional("ALERT_EMAIL_OPS", "ops@example.fr"),
   },
-} as const;
+};
 
-export type SourceFromKey = (typeof config.API_KEYS)[keyof typeof config.API_KEYS];
+export type SourceFromKey = EventSource;
