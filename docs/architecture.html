@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PLO — Architecture & UJM</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+      line-height: 1.6;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+      color: white;
+      padding: 40px 60px;
+      border-bottom: 4px solid #3b82f6;
+    }
+    header h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+    header p  { font-size: 15px; color: #94a3b8; margin-top: 6px; }
+    .badge {
+      display: inline-block;
+      background: #3b82f6;
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+      margin-left: 10px;
+      vertical-align: middle;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: white;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 0 60px;
+      display: flex;
+      gap: 0;
+    }
+    nav a {
+      display: block;
+      padding: 14px 20px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #64748b;
+      text-decoration: none;
+      border-bottom: 3px solid transparent;
+      transition: all 0.15s;
+    }
+    nav a:hover { color: #3b82f6; border-color: #93c5fd; }
+
+    /* ── Sections ── */
+    .section {
+      padding: 60px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .section:nth-child(odd) { background: white; }
+    .section:nth-child(even) { background: #f8fafc; }
+
+    .section-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+    .section-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    .icon-blue   { background: #dbeafe; }
+    .icon-purple { background: #ede9fe; }
+    .icon-green  { background: #dcfce7; }
+
+    .section-header h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .section-header p {
+      font-size: 14px;
+      color: #64748b;
+      margin-top: 4px;
+      max-width: 700px;
+    }
+
+    /* ── Diagram container ── */
+    .diagram-card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      overflow-x: auto;
+    }
+
+    .mermaid {
+      text-align: center;
+    }
+
+    /* ── UJM table ── */
+    .ujm-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .ujm-table th {
+      background: #0f172a;
+      color: white;
+      padding: 12px 16px;
+      text-align: left;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .ujm-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      vertical-align: top;
+    }
+    .ujm-table tr:nth-child(even) td { background: #f8fafc; }
+    .phase-header td {
+      background: #1e3a5f !important;
+      color: white;
+      font-weight: 700;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .emoji-score {
+      font-size: 20px;
+      display: block;
+      margin-bottom: 2px;
+    }
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      margin: 2px;
+    }
+    .tag-red    { background: #fee2e2; color: #991b1b; }
+    .tag-orange { background: #ffedd5; color: #9a3412; }
+    .tag-blue   { background: #dbeafe; color: #1e40af; }
+    .tag-green  { background: #dcfce7; color: #166534; }
+    .tag-gray   { background: #f1f5f9; color: #475569; }
+
+    .pain-point { color: #dc2626; font-size: 12px; }
+    .opportunity { color: #16a34a; font-size: 12px; }
+    .touchpoint { font-size: 12px; color: #3b82f6; font-style: italic; }
+
+    /* ── Legend ── */
+    .legend {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-top: 24px;
+      padding: 16px 20px;
+      background: #f8fafc;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #475569;
+    }
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    /* ── Sprints tag ── */
+    .sprint-tags {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    .sprint-tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid;
+    }
+    .s1 { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+    .s2 { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+    .s3 { background: #fdf4ff; color: #7e22ce; border-color: #e9d5ff; }
+    .s4 { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
+    .s5 { background: #f0f9ff; color: #0369a1; border-color: #bae6fd; }
+
+    footer {
+      text-align: center;
+      padding: 30px;
+      font-size: 12px;
+      color: #94a3b8;
+      background: #0f172a;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>PLO — Project Lifecycle Orchestrator <span class="badge">v1.0 · Sprints 1–5</span></h1>
+  <p>Architecture technique · Architecture fonctionnelle · User Journey Map</p>
+  <div class="sprint-tags" style="margin-top:14px;">
+    <span class="sprint-tag s1">Sprint 1 · Données</span>
+    <span class="sprint-tag s2">Sprint 2 · API Ingestion</span>
+    <span class="sprint-tag s3">Sprint 3 · Moteur anomalie</span>
+    <span class="sprint-tag s4">Sprint 4 · Interface</span>
+    <span class="sprint-tag s5">Sprint 5 · Adaptateurs</span>
+  </div>
+</header>
+
+<nav>
+  <a href="#tech">Architecture technique</a>
+  <a href="#fonc">Architecture fonctionnelle</a>
+  <a href="#ujm">User Journey Map</a>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- 1. ARCHITECTURE TECHNIQUE                                       -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="section" id="tech">
+  <div class="section-header">
+    <div class="section-icon icon-blue">⚙️</div>
+    <div>
+      <h2>Architecture technique</h2>
+      <p>Stack Node.js / TypeScript — ingestion asynchrone via BullMQ, moteur d'anomalie hybride (temps réel + cron), interface React découplée.</p>
+    </div>
+  </div>
+
+  <div class="diagram-card">
+    <div class="mermaid">
+flowchart TB
+    subgraph SRC["🔌 Sources externes"]
+      direction LR
+      ERP["ERP\ncommandes · stock · picking"]
+      OMS["OMS\nshipments · consolidation"]
+      TMS["TMS Last Mile\nlivraison client"]
+      WFM["WFM\ninstallation · pose"]
+      CRM["CRM\nqualité · clôture"]
+      ECOM["E-commerce\npanier · paiement"]
+    end
+
+    subgraph API["🚀 API Layer — Fastify 5 · Node 20+"]
+      direction TB
+      AUTH["Auth Plugin\nBearer token / source"]
+      INGEST["POST /api/events/ingest\nZod validation"]
+      ADAPTERS["Adapters\nERP · OMS · TMS · WFM · CRM · Ecom · Manual"]
+      PUBLIC["Routes publiques\nGET /projects  GET /anomalies\nGET /rules  PATCH /rules/:id\nPOST /anomalies/:id/ack"]
+    end
+
+    subgraph ASYNC["⚙️ Traitement asynchrone"]
+      QUEUE["BullMQ Queue\nplo-events\n(Redis 7)"]
+      DLQ["Dead Letter Queue\nplo-dead-letters"]
+      WORKER["Worker BullMQ\n• Step upsert\n• Entity updates\n• Règles temps réel"]
+      CRON["node-cron\n• Horaire  0 * * * *\n• Quotidien 0 9 * * *\nRègles scheduled"]
+    end
+
+    subgraph DB["🗄️ PostgreSQL 15 + Prisma 5"]
+      MODELS["12 modèles\nProject · Order · OrderLine · Shipment\nConsolidation · LastMileDelivery\nInstallation · Step · Event\nAnomalyRule · Notification\nProjectExternalRef"]
+    end
+
+    subgraph NOTIF["📬 Notifications"]
+      EMAIL["nodemailer\nTemplates ANO-01/02/06\nfallback console"]
+    end
+
+    subgraph FRONT["🖥️ Frontend — React 18 + Vite 5"]
+      UI["Interface opérateur\n• Vue Projets\n• Vue Détail + Timeline\n• Vue Anomalies\n• Vue Règles\nTailwind 3 · React Query 5\nReact Router 6"]
+    end
+
+    SRC -->|Bearer token| AUTH
+    AUTH --> INGEST
+    INGEST --> ADAPTERS
+    ADAPTERS -->|event créé| QUEUE
+    ADAPTERS -->|projet inconnu| DLQ
+    QUEUE --> WORKER
+    WORKER -->|read/write| MODELS
+    WORKER -->|alerte| EMAIL
+    CRON -->|évalue règles| MODELS
+    CRON -->|alerte| EMAIL
+    PUBLIC -->|read| MODELS
+    UI <-->|React Query\nproxy /api| PUBLIC
+    UI -->|POST ingest| AUTH
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>Flux synchrone (HTTP)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div>Flux asynchrone (queue)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>Lecture/écriture base</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Notifications sortantes</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- 2. ARCHITECTURE FONCTIONNELLE                                   -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="section" id="fonc">
+  <div class="section-header">
+    <div class="section-icon icon-purple">🔄</div>
+    <div>
+      <h2>Architecture fonctionnelle</h2>
+      <p>Cycle de vie complet d'un projet client — des étapes amont (inspiration, devis) jusqu'à la clôture, avec les 22 règles d'anomalie déclenchées à chaque niveau.</p>
+    </div>
+  </div>
+
+  <div class="diagram-card">
+    <div class="mermaid">
+flowchart LR
+    subgraph P["📁 NIVEAU PROJECT"]
+      direction TB
+      P1["Inspiration\n✦ inspiration.started\n✦ inspiration.completed\n✦ inspiration.converted"]
+      P2["Devis Produits\n✦ quote_products.created\n✦ quote_products.accepted\n✦ quote_products.expired"]
+      P3["Devis Pose\n✦ quote_installation.created\n✦ quote_installation.accepted"]
+      P6["Consolidation\n✦ consolidation.order_arrived\n✦ consolidation.complete\n✦ consolidation.exception"]
+      P7["Last Mile\n✦ lastmile.scheduled\n✦ lastmile.delivered\n✦ lastmile.failed"]
+      P8["Clôture\n✦ project.closed\n✦ quality.survey_completed"]
+    end
+
+    subgraph O["📦 NIVEAU ORDER × N commandes"]
+      direction TB
+      O1["Commande\n✦ order.confirmed\n✦ order.cancelled"]
+      O2["Stock\n✦ stock.check_ok\n✦ stock.shortage"]
+      O3["Picking\n✦ picking.started\n✦ picking.completed\n✦ picking.discrepancy"]
+      O4["Expédition\n✦ shipment.dispatched\n✦ shipment.eta_updated\n✦ shipment.arrived_at_station"]
+    end
+
+    subgraph I["🔧 NIVEAU INSTALLATION"]
+      direction TB
+      I1["Planification\n✦ installation.scheduled\n✦ installation.rescheduled"]
+      I2["Intervention\n✦ installation.started\n✦ installation.completed\n✦ installation.issue"]
+      I3["Réception\n✦ customer_signature.signed\n✦ installation.report_submitted"]
+    end
+
+    subgraph ANO["🚨 MOTEUR ANOMALIE — 22 règles"]
+      direction TB
+      RT["⚡ Temps réel\nANO-01 Stock tardif\nANO-02 Écart picking\nANO-05 Install sans livraison\nANO-06 Problème installation\nANO-11 Install sans prérequis\nANO-12 Incident bloquant\nANO-15 Refus signature\nANO-16 ETA dépasse date promise\nANO-18 Exception station\nANO-19 Last mile sans conso\nANO-20 Partiel sans accord\nANO-22 Last mile échoué"]
+      HR["⏰ Cron horaire\nANO-08 Picking non démarré\nANO-09 Livraison sans clôture\nANO-13 Technicien en retard\nANO-14 CR non soumis\nANO-21 Silence OMS 24h"]
+      DA["📅 Cron quotidien\nANO-04 Livraison partielle pré-pose\nANO-07 Livraison non planifiée\nANO-10 Devis pose non créé\nANO-17 Consolidation incomplète J-3"]
+    end
+
+    subgraph OUT["📬 SORTIES"]
+      N1["Email coordinateur"]
+      N2["Email acheteur"]
+      N3["Email manager"]
+      N4["Email ops"]
+      N5["Interface PLO\nbadge rouge / orange"]
+    end
+
+    P1 --> P2 --> P3 --> O1
+    O1 --> O2 --> O3 --> O4 --> P6 --> P7
+    P7 --> I1 --> I2 --> I3 --> P8
+
+    O2 -->|stock.shortage| RT
+    O3 -->|picking.discrepancy| RT
+    O4 -->|shipment.eta_updated| RT
+    P6 -->|consolidation.exception| RT
+    P7 -->|lastmile.scheduled| RT
+    I2 -->|installation.issue| RT
+    I3 -->|signed=false| RT
+
+    O3 -.->|H-8| HR
+    P7 -.->|H+4| HR
+    I2 -.->|H+2| HR
+    O4 -.->|24h silence| HR
+    P6 -.->|J-3| DA
+    P3 -.->|H+48| DA
+
+    RT --> N1 & N2 & N3
+    HR --> N1 & N4
+    DA --> N1
+    RT & HR & DA --> N5
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#374151"></div>Flux principal cycle de vie</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>Déclencheur temps réel (event)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#6b7280;border:2px dashed #9ca3af;width:20px;height:3px;border-radius:0"></div>Déclencheur cron (délai)</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- 3. USER JOURNEY MAP                                             -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="section" id="ujm">
+  <div class="section-header">
+    <div class="section-icon icon-green">🗺️</div>
+    <div>
+      <h2>User Journey Map</h2>
+      <p>
+        Persona : <strong>Coordinateur opérationnel</strong> — Scénario : détection et résolution d'une anomalie critique
+        <em>ANO-16 (ETA Shipment dépasse la date de livraison promise client)</em>.
+      </p>
+    </div>
+  </div>
+
+  <!-- Mermaid journey -->
+  <div class="diagram-card" style="margin-bottom:32px;">
+    <div class="mermaid">
+journey
+    title Coordinateur — Gestion anomalie critique PLO (ANO-16)
+    section Détection
+      Réception email alerte: 2: Coordinateur
+      Connexion interface PLO: 4: Coordinateur
+    section Investigation
+      Vue anomalies actives: 5: Coordinateur
+      Clic sur projet Dubois: 5: Coordinateur
+      Consultation timeline: 4: Coordinateur
+      Analyse ETA vs date promise: 2: Coordinateur
+    section Action
+      Contact transporteur hors PLO: 3: Coordinateur
+      Saisie événement manuel PLO: 4: Coordinateur
+      Communication client: 2: Coordinateur, Manager
+    section Résolution
+      Acquittement anomalie: 5: Coordinateur
+      Réception MàJ OMS: 4: Coordinateur
+      Livraison confirmée: 5: Coordinateur, Manager
+    </div>
+  </div>
+
+  <!-- Detailed UJM table -->
+  <div class="diagram-card" style="overflow-x:auto;">
+    <table class="ujm-table">
+      <thead>
+        <tr>
+          <th style="width:90px">Phase</th>
+          <th style="width:130px">Étape</th>
+          <th style="width:110px">Acteur(s)</th>
+          <th style="width:120px">Action</th>
+          <th style="width:120px">Outil / Touchpoint</th>
+          <th style="width:90px">Émotion</th>
+          <th>Pain points 🔴</th>
+          <th>Opportunités ✅</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <!-- PHASE 1 -->
+        <tr class="phase-header">
+          <td colspan="8">📡 PHASE 1 — DÉTECTION</td>
+        </tr>
+        <tr>
+          <td rowspan="2"><span class="tag tag-red">Détection</span></td>
+          <td>Réception alerte</td>
+          <td>Coordinateur</td>
+          <td>Ouvre email d'alerte ANO-16 reçu à 9h</td>
+          <td><span class="touchpoint">📧 Email PLO</span></td>
+          <td><span class="emoji-score">😟</span>Inquiet</td>
+          <td class="pain-point">Email perdu dans la boîte si volume élevé. Pas de prioritisation.</td>
+          <td class="opportunity">Objet email structuré avec sévérité + client. Badge in-app visible au login.</td>
+        </tr>
+        <tr>
+          <td>Connexion PLO</td>
+          <td>Coordinateur</td>
+          <td>Ouvre l'interface opérateur</td>
+          <td><span class="touchpoint">🖥️ Interface PLO</span></td>
+          <td><span class="emoji-score">😐</span>Neutre</td>
+          <td class="pain-point">Pas de notification push navigateur. Doit aller checker activement.</td>
+          <td class="opportunity">Badge rouge sur l'icône onglet. Notification push web (Sprint 6).</td>
+        </tr>
+
+        <!-- PHASE 2 -->
+        <tr class="phase-header">
+          <td colspan="8">🔍 PHASE 2 — INVESTIGATION</td>
+        </tr>
+        <tr>
+          <td rowspan="3"><span class="tag tag-orange">Investigation</span></td>
+          <td>Vue anomalies actives</td>
+          <td>Coordinateur</td>
+          <td>Consulte la liste triée par sévérité</td>
+          <td><span class="touchpoint">🖥️ /anomalies</span></td>
+          <td><span class="emoji-score">🧐</span>Concentré</td>
+          <td class="pain-point">Si beaucoup d'anomalies : difficile de prioriser sans filtres avancés.</td>
+          <td class="opportunity">Filtres par type de projet, magasin, date. Vue groupée par projet.</td>
+        </tr>
+        <tr>
+          <td>Consultation timeline</td>
+          <td>Coordinateur</td>
+          <td>Clique sur le projet Dubois, lit la timeline</td>
+          <td><span class="touchpoint">🖥️ /projects/:id</span></td>
+          <td><span class="emoji-score">🧐</span>Concentré</td>
+          <td class="pain-point">Les events sont listés mais le contexte (pourquoi ce retard ?) n'est pas immédiatement lisible.</td>
+          <td class="opportunity">Afficher l'ETA vs date promise en rouge directement sur la step. Lien vers suivi transporteur.</td>
+        </tr>
+        <tr>
+          <td>Analyse ETA</td>
+          <td>Coordinateur</td>
+          <td>Repère l'écart ETA / date promise dans le payload</td>
+          <td><span class="touchpoint">🖥️ PLO Timeline</span></td>
+          <td><span class="emoji-score">😰</span>Inquiet</td>
+          <td class="pain-point">L'ETA et la date promise sont dans des champs JSON bruts. Pas de calcul d'écart affiché.</td>
+          <td class="opportunity">Calculer et afficher l'écart en jours : "ETA dans 8j / promis dans 5j → retard +3j".</td>
+        </tr>
+
+        <!-- PHASE 3 -->
+        <tr class="phase-header">
+          <td colspan="8">⚡ PHASE 3 — ACTION</td>
+        </tr>
+        <tr>
+          <td rowspan="3"><span class="tag tag-blue">Action</span></td>
+          <td>Contact transporteur</td>
+          <td>Coordinateur</td>
+          <td>Appelle / maile le transporteur hors PLO pour obtenir une ETA fiable</td>
+          <td><span class="touchpoint">📞 Téléphone / Email ext.</span></td>
+          <td><span class="emoji-score">😤</span>Frustré</td>
+          <td class="pain-point">Sortie du PLO obligatoire. Pas de lien direct vers le tracking transporteur. Perte de contexte.</td>
+          <td class="opportunity">Ajouter carrier_tracking_ref cliquable sur la step shipment. Lien direct suivi transporteur.</td>
+        </tr>
+        <tr>
+          <td>Saisie manuelle</td>
+          <td>Coordinateur</td>
+          <td>Enregistre le contact via la modal "Saisie manuelle"</td>
+          <td><span class="touchpoint">🖥️ ManualEventModal</span></td>
+          <td><span class="emoji-score">😌</span>Soulagé</td>
+          <td class="pain-point">Doit connaître le bon event_type à saisir. Pas de templates préremplis par contexte.</td>
+          <td class="opportunity">Suggérer les event_types contextuels selon la step en cours. Champ commentaire libre.</td>
+        </tr>
+        <tr>
+          <td>Communication client</td>
+          <td>Coordinateur + Manager</td>
+          <td>Informe le client du retard (appel ou email)</td>
+          <td><span class="touchpoint">📞 CRM ext. / Téléphone</span></td>
+          <td><span class="emoji-score">😰</span>Stressé</td>
+          <td class="pain-point">Pas d'historique des contacts client dans le PLO. Duplication avec le CRM externe.</td>
+          <td class="opportunity">Intégration CRM Sprint 5 : log automatique du contact. Proposition de nouvelle date depuis le PLO.</td>
+        </tr>
+
+        <!-- PHASE 4 -->
+        <tr class="phase-header">
+          <td colspan="8">✅ PHASE 4 — RÉSOLUTION</td>
+        </tr>
+        <tr>
+          <td rowspan="3"><span class="tag tag-green">Résolution</span></td>
+          <td>Acquittement anomalie</td>
+          <td>Coordinateur</td>
+          <td>Clique "Acquitter", saisit son nom + commentaire</td>
+          <td><span class="touchpoint">🖥️ /anomalies</span></td>
+          <td><span class="emoji-score">😌</span>Soulagé</td>
+          <td class="pain-point">L'acquittement ne clôture pas la règle si le problème persiste : risque de re-déclenchement sans contexte.</td>
+          <td class="opportunity">Ajouter un champ "action prise" + statut "en traitement" distinct de "résolu".</td>
+        </tr>
+        <tr>
+          <td>Réception MàJ OMS</td>
+          <td>Coordinateur</td>
+          <td>Reçoit le nouvel event shipment.eta_updated poussé par l'OMS</td>
+          <td><span class="touchpoint">⚙️ API Ingest OMS</span></td>
+          <td><span class="emoji-score">👀</span>Vigilant</td>
+          <td class="pain-point">Si la nouvelle ETA dépasse encore la date promise : nouvelle anomalie ANO-16 relancée sans lien avec la première.</td>
+          <td class="opportunity">Historiser les déclenchements d'une même règle sur un projet. Vue "historique anomalies par projet".</td>
+        </tr>
+        <tr>
+          <td>Livraison confirmée</td>
+          <td>Coordinateur + Manager</td>
+          <td>Reçoit event lastmile.delivered. Anomalie auto-résolue.</td>
+          <td><span class="touchpoint">🖥️ PLO + 📧 Email</span></td>
+          <td><span class="emoji-score">😊</span>Satisfait</td>
+          <td class="pain-point">Pas de notification automatique "anomalie résolue" — doit checker manuellement.</td>
+          <td class="opportunity">Notification de résolution automatique quand la condition d'anomalie n'est plus vérifiée.</td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Synthèse pain points / opportunités -->
+  <div style="margin-top:32px; display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+    <div style="background:white;border:1px solid #fecaca;border-radius:12px;padding:24px;">
+      <h3 style="color:#dc2626;font-size:15px;margin-bottom:16px;">🔴 Pain points prioritaires</h3>
+      <ul style="list-style:none;space-y:8px;font-size:13px;color:#374151;line-height:2;">
+        <li>1. Pas de calcul d'écart ETA vs date promise affiché</li>
+        <li>2. Lien tracking transporteur absent de la timeline</li>
+        <li>3. Pas de notification push navigateur</li>
+        <li>4. Sortie du PLO obligatoire pour contacter le transporteur</li>
+        <li>5. Pas d'historique des contacts client</li>
+        <li>6. Pas de notification de résolution automatique</li>
+      </ul>
+    </div>
+    <div style="background:white;border:1px solid #bbf7d0;border-radius:12px;padding:24px;">
+      <h3 style="color:#16a34a;font-size:15px;margin-bottom:16px;">✅ Opportunités Sprint 6+</h3>
+      <ul style="list-style:none;font-size:13px;color:#374151;line-height:2;">
+        <li>1. Afficher l'écart ETA/promis en jours sur la step</li>
+        <li>2. Lien cliquable carrier_tracking_ref</li>
+        <li>3. Notification push web (Service Worker)</li>
+        <li>4. Statut anomalie "en traitement" + historique</li>
+        <li>5. Notification de résolution automatique</li>
+        <li>6. Dashboard KPIs : MTTD, MTTR, taux anomalies / projet</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<footer>
+  PLO — Project Lifecycle Orchestrator · Retailer bricolage omnicanal · v1.0 · Sprints 1–5
+</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'default',
+    flowchart: { curve: 'basis', padding: 20 },
+    journey: { taskFontSize: 13 },
+    themeVariables: {
+      primaryColor: '#dbeafe',
+      primaryTextColor: '#1e3a5f',
+      primaryBorderColor: '#3b82f6',
+      lineColor: '#94a3b8',
+      secondaryColor: '#f0fdf4',
+      tertiaryColor: '#fdf4ff',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    }
+  });
+</script>
+</body>
+</html>
