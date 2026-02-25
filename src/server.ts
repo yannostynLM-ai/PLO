@@ -6,6 +6,7 @@ import { ingestRoute } from "./routes/ingest.route.js";
 import { projectsRoute } from "./routes/projects.route.js";
 import { anomaliesRoute } from "./routes/anomalies.route.js";
 import { rulesRoute } from "./routes/rules.route.js";
+import { statsRoute } from "./routes/stats.route.js";
 import { config } from "./config.js";
 
 // =============================================================================
@@ -38,6 +39,7 @@ export async function buildServer() {
   await fastify.register(projectsRoute);
   await fastify.register(anomaliesRoute);
   await fastify.register(rulesRoute);
+  await fastify.register(statsRoute);
 
   // Routes protégées — auth Bearer par source
   await fastify.register(async (api) => {

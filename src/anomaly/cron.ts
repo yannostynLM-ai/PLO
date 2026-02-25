@@ -1,5 +1,6 @@
 import cron from "node-cron";
 import { evaluateScheduledRules } from "./engine.js";
+import { runEscalationCheck } from "../services/escalation.service.js";
 
 // =============================================================================
 // Cron PLO — Évaluation périodique des règles d'anomalie
@@ -31,5 +32,15 @@ export function startCron(): void {
     }
   });
 
-  console.log("⏰ Cron PLO démarré (horaire + quotidien 9h)");
+  // Sprint 6 — Escalade toutes les 30 min
+  cron.schedule("*/30 * * * *", async () => {
+    console.log("[Cron] Vérification des escalades...");
+    try {
+      await runEscalationCheck();
+    } catch (err) {
+      console.error("[Cron] Erreur escalade:", err);
+    }
+  });
+
+  console.log("⏰ Cron PLO démarré (horaire + quotidien 9h + escalade 30min)");
 }

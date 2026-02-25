@@ -116,6 +116,22 @@ export interface AnomalyRule {
   updated_at: string;
 }
 
+export interface Stats {
+  period_days: number;
+  total_notifications: number;
+  by_severity: Record<string, number>;
+  by_status: Record<string, number>;
+  acknowledged_count: number;
+  acknowledgement_rate: number;
+  mean_time_to_acknowledge_hours: number | null;
+  escalated_count: number;
+  crm_tickets_created: number;
+  top_rules: Array<{ rule_id: string; rule_name: string; count: number; severity: string }>;
+  active_projects_with_anomalies: number;
+  trend_current_7d: number;
+  trend_previous_7d: number;
+}
+
 // =============================================================================
 // Fetch helpers
 // =============================================================================
@@ -195,6 +211,14 @@ export function useAcknowledge() {
       void qc.invalidateQueries({ queryKey: ["projects"] });
       void qc.invalidateQueries({ queryKey: ["project"] });
     },
+  });
+}
+
+export function useStats() {
+  return useQuery({
+    queryKey: ["stats"],
+    queryFn: () => apiFetch<Stats>("/api/stats"),
+    refetchInterval: 60_000,
   });
 }
 

@@ -1,5 +1,6 @@
 import { prisma } from "../lib/prisma.js";
 import { sendEmail } from "./email.service.js";
+import { createCrmTicketForNotification } from "./crm-ticket.service.js";
 import type { RuleResult } from "../anomaly/types.js";
 
 // =============================================================================
@@ -42,6 +43,7 @@ export async function handleRuleResult(result: RuleResult): Promise<void> {
   }
 
   const now = new Date();
+  const createdNotifIds: string[] = [];
 
   // Crée une Notification par destinataire
   await Promise.all(
@@ -58,6 +60,7 @@ export async function handleRuleResult(result: RuleResult): Promise<void> {
           status: "pending",
         },
       });
+      createdNotifIds.push(notification.id);
 
       // Envoie l'email
       const sent = await sendEmail({
@@ -78,6 +81,22 @@ export async function handleRuleResult(result: RuleResult): Promise<void> {
       });
     })
   );
+
+  // Sprint 6 — Ticket CRM pour les règles critiques
+  if (createdNotifIds.length > 0) {
+    const rule = await prisma.anomalyRule.findUnique({
+      where: { id: result.ruleId },
+      select: { severity: true },
+    });
+    if (rule?.severity === "critical") {
+      await createCrmTicketForNotification(
+        createdNotifIds[0],
+        result.projectId,
+        result.ruleId,
+        result.subject
+      );
+    }
+  }
 
   // Marque le step de l'event en anomaly (non bloquant)
   try {

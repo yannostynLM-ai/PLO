@@ -67,6 +67,9 @@ export const config = {
     manager: optional("ALERT_EMAIL_MANAGER", "manager@example.fr"),
     ops: optional("ALERT_EMAIL_OPS", "ops@example.fr"),
   },
+
+  // Sprint 6 — Escalade temporelle
+  ESCALATION_HOURS: parseInt(optional("ESCALATION_HOURS", "4"), 10),
 };
 
 export type SourceFromKey = EventSource;

@@ -444,6 +444,8 @@ model Notification {
   recipient       String
   status          NotificationStatus  @default(pending)
   sent_at         DateTime?
+  escalated_at    DateTime?   // Sprint 6 : horodatage de l'escalade
+  crm_ticket_ref  String?     // Sprint 6 : référence ticket CRM simulé
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

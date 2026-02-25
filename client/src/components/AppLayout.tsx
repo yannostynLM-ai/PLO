@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from "react-router-dom";
-import { LayoutList, AlertTriangle, Settings, Activity } from "lucide-react";
+import { LayoutList, AlertTriangle, Settings, Activity, BarChart2 } from "lucide-react";
 
 export default function AppLayout() {
   const navClass = ({ isActive }: { isActive: boolean }) =>
@@ -22,6 +22,10 @@ export default function AppLayout() {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
+          <NavLink to="/dashboard" className={navClass}>
+            <BarChart2 className="h-4 w-4" />
+            Dashboard
+          </NavLink>
           <NavLink to="/" end className={navClass}>
             <LayoutList className="h-4 w-4" />
             Projets
@@ -37,7 +41,7 @@ export default function AppLayout() {
         </nav>
 
         <div className="px-4 py-3 border-t border-slate-700">
-          <p className="text-xs text-slate-500">v1.0 — Sprint 4</p>
+          <p className="text-xs text-slate-500">v1.0 — Sprint 6</p>
         </div>
       </aside>
 
