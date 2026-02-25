@@ -70,6 +70,9 @@ export const config = {
 
   // Sprint 6 — Escalade temporelle
   ESCALATION_HOURS: parseInt(optional("ESCALATION_HOURS", "4"), 10),
+
+  // Sprint 8 — Agent IA (laisser vide pour mode fallback heuristique)
+  ANTHROPIC_API_KEY: optional("ANTHROPIC_API_KEY", ""),
 };
 
 export type SourceFromKey = EventSource;

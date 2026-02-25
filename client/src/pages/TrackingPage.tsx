@@ -1,5 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useTracking } from "../lib/api.ts";
+import type { TrackingMilestone } from "../lib/api.ts";
 import { formatDate } from "../lib/utils.ts";
 import { Activity, CheckCircle2, Circle, Loader2, RefreshCw, ExternalLink } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -71,6 +72,70 @@ function ProjectStatusBadge({ status }: { status: string }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Horizontal stepper
+// ---------------------------------------------------------------------------
+
+function HorizontalStepper({ milestones }: { milestones: TrackingMilestone[] }) {
+  const completedCount = milestones.filter((m) => m.status === "completed").length;
+  const totalCount = milestones.length;
+  const progressPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+      {/* Dots + connectors */}
+      <div className="flex items-center">
+        {milestones.map((m, idx) => (
+          <div key={m.key} className="flex items-center flex-1 last:flex-none">
+            {/* Dot */}
+            <div className="flex flex-col items-center gap-1 flex-shrink-0">
+              <div
+                className={`w-3 h-3 rounded-full border-2 transition-colors ${
+                  m.status === "completed"
+                    ? "bg-green-500 border-green-500"
+                    : m.status === "in_progress"
+                    ? "bg-blue-500 border-blue-500 animate-pulse"
+                    : "bg-white border-slate-300"
+                }`}
+                title={m.label}
+              />
+              <span className="hidden sm:block text-[10px] text-slate-500 text-center max-w-[48px] leading-tight truncate">
+                {m.label}
+              </span>
+            </div>
+            {/* Connector */}
+            {idx < milestones.length - 1 && (
+              <div
+                className={`flex-1 h-0.5 mx-1 ${
+                  m.status === "completed" ? "bg-green-400" : "bg-slate-200"
+                }`}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Global progress bar */}
+      <div className="mt-3">
+        <div className="flex justify-between text-xs text-slate-400 mb-1">
+          <span>{completedCount}/{totalCount} étapes complétées</span>
+          <span>{progressPct}%</span>
+        </div>
+        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-green-400 rounded-full transition-all"
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main page
+// ---------------------------------------------------------------------------
+
 export default function TrackingPage() {
   const { token } = useParams<{ token: string }>();
   const { data, isLoading, error, refetch, dataUpdatedAt } = useTracking(token ?? "");
@@ -123,6 +188,11 @@ export default function TrackingPage() {
 
         {data && (
           <>
+            {/* Stepper horizontal */}
+            {data.milestones.length > 0 && (
+              <HorizontalStepper milestones={data.milestones} />
+            )}
+
             {/* Project header card */}
             <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
               <div className="flex items-start justify-between gap-3">

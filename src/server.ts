@@ -8,6 +8,7 @@ import { anomaliesRoute } from "./routes/anomalies.route.js";
 import { rulesRoute } from "./routes/rules.route.js";
 import { statsRoute } from "./routes/stats.route.js";
 import { trackingRoute } from "./routes/tracking.route.js";
+import { riskRoute } from "./routes/risk.route.js";
 import { config } from "./config.js";
 
 // =============================================================================
@@ -42,6 +43,7 @@ export async function buildServer() {
   await fastify.register(rulesRoute);
   await fastify.register(statsRoute);
   await fastify.register(trackingRoute);
+  await fastify.register(riskRoute);
 
   // Routes protégées — auth Bearer par source
   await fastify.register(async (api) => {

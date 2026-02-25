@@ -281,6 +281,35 @@ export function useStats() {
   });
 }
 
+export interface RiskFactor {
+  factor: string;
+  impact: "low" | "medium" | "high";
+  detail: string;
+}
+
+export interface RiskAnalysis {
+  risk_score: number;
+  level: "low" | "medium" | "high" | "critical";
+  summary: string;
+  factors: RiskFactor[];
+  recommendation: string;
+  generated_at: string;
+  cached: boolean;
+}
+
+export function useRiskAnalysis(projectId: string, enabled: boolean) {
+  const qc = useQueryClient();
+  const query = useQuery<RiskAnalysis>({
+    queryKey: ["risk", projectId],
+    queryFn: () => apiFetch<RiskAnalysis>(`/api/projects/${projectId}/risk-analysis`),
+    enabled,
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  const refresh = () => void qc.invalidateQueries({ queryKey: ["risk", projectId] });
+  return { ...query, refresh };
+}
+
 export function useToggleRule() {
   const qc = useQueryClient();
   return useMutation({

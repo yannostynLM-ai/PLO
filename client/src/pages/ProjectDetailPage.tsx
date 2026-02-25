@@ -1,7 +1,8 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useProject } from "../lib/api.ts";
+import { useProject, useRiskAnalysis } from "../lib/api.ts";
 import type { StepDetail, OrderDetail } from "../lib/api.ts";
 import ProjectTimeline from "../components/ProjectTimeline.tsx";
+import ProjectGantt from "../components/ProjectGantt.tsx";
 import SeverityBadge from "../components/SeverityBadge.tsx";
 import {
   formatDate,
@@ -9,8 +10,9 @@ import {
   projectStatusLabel,
   projectTypeLabel,
 } from "../lib/utils.ts";
-import { ArrowLeft, RefreshCw, Copy, Check } from "lucide-react";
-import { useState } from "react";
+import { ArrowLeft, RefreshCw, Copy, Check, Brain, AlertTriangle, Loader2 } from "lucide-react";
+import { useState, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 // Build timeline groups from project data
 function buildGroups(project: {
@@ -64,10 +66,175 @@ function TrackingTokenBlock({ token }: { token: string }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// AI Risk panel
+// ---------------------------------------------------------------------------
+
+const LEVEL_CONFIG = {
+  low: { bar: "bg-green-400", badge: "bg-green-100 text-green-700", label: "Faible" },
+  medium: { bar: "bg-orange-400", badge: "bg-orange-100 text-orange-700", label: "Modéré" },
+  high: { bar: "bg-red-400", badge: "bg-red-100 text-red-700", label: "Élevé" },
+  critical: { bar: "bg-red-700", badge: "bg-red-200 text-red-900", label: "Critique" },
+};
+
+const IMPACT_LABEL: Record<string, string> = {
+  low: "faible",
+  medium: "moyen",
+  high: "élevé",
+};
+
+function RiskPanel({ projectId }: { projectId: string }) {
+  const [enabled, setEnabled] = useState(false);
+  const qc = useQueryClient();
+  const { data, isFetching, error } = useRiskAnalysis(projectId, enabled);
+
+  const handleRefresh = useCallback(() => {
+    void qc.invalidateQueries({ queryKey: ["risk", projectId] });
+  }, [qc, projectId]);
+
+  if (!enabled) {
+    return (
+      <div className="bg-white rounded-lg border border-slate-200 p-4">
+        <h3 className="font-semibold text-slate-700 text-sm mb-3 flex items-center gap-1.5">
+          <Brain className="h-4 w-4 text-purple-500" />
+          Analyse IA des risques
+        </h3>
+        <p className="text-xs text-slate-400 mb-3">
+          Analyse le projet avec Claude AI et retourne un score de risque 0–100.
+        </p>
+        <button
+          onClick={() => setEnabled(true)}
+          className="w-full text-xs font-medium px-3 py-2 rounded bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors"
+        >
+          Analyser les risques
+        </button>
+      </div>
+    );
+  }
+
+  if (isFetching && !data) {
+    return (
+      <div className="bg-white rounded-lg border border-slate-200 p-4">
+        <h3 className="font-semibold text-slate-700 text-sm mb-3 flex items-center gap-1.5">
+          <Brain className="h-4 w-4 text-purple-500" />
+          Analyse IA des risques
+        </h3>
+        <div className="flex items-center gap-2 text-xs text-slate-400">
+          <Loader2 className="h-4 w-4 animate-spin text-purple-400" />
+          Analyse en cours (Claude AI)…
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg border border-red-100 p-4">
+        <h3 className="font-semibold text-red-600 text-sm mb-2 flex items-center gap-1.5">
+          <AlertTriangle className="h-4 w-4" />
+          Analyse indisponible
+        </h3>
+        <p className="text-xs text-slate-400">{error.message}</p>
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  const cfg = LEVEL_CONFIG[data.level];
+
+  return (
+    <div className="bg-white rounded-lg border border-slate-200 p-4 space-y-3">
+      <h3 className="font-semibold text-slate-700 text-sm flex items-center gap-1.5">
+        <Brain className="h-4 w-4 text-purple-500" />
+        Analyse IA des risques
+        {data.cached && (
+          <span className="text-xs font-normal text-slate-400">(mis en cache)</span>
+        )}
+      </h3>
+
+      {/* Score + level */}
+      <div className="flex items-center gap-3">
+        <span className="text-2xl font-bold text-slate-900">{data.risk_score}</span>
+        <div className="flex-1">
+          <div className="flex items-center justify-between mb-1">
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${cfg.badge}`}>
+              {cfg.label}
+            </span>
+            <span className="text-xs text-slate-400">/100</span>
+          </div>
+          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full ${cfg.bar} transition-all`}
+              style={{ width: `${data.risk_score}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Summary */}
+      <p className="text-xs text-slate-600 leading-relaxed">{data.summary}</p>
+
+      {/* Factors */}
+      {data.factors.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-slate-500 mb-1.5">Facteurs :</p>
+          <div className="space-y-1.5">
+            {data.factors.map((f, i) => (
+              <div key={i} className="text-xs">
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                      f.impact === "high"
+                        ? "bg-red-400"
+                        : f.impact === "medium"
+                        ? "bg-orange-400"
+                        : "bg-slate-300"
+                    }`}
+                  />
+                  <span className="font-medium text-slate-700">{f.factor}</span>
+                  <span className="text-slate-400">({IMPACT_LABEL[f.impact] ?? f.impact})</span>
+                </div>
+                <p className="text-slate-400 mt-0.5 pl-3">{f.detail}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Recommendation */}
+      <div className="bg-purple-50 rounded p-2.5">
+        <p className="text-xs font-semibold text-purple-700 mb-0.5">Recommandation</p>
+        <p className="text-xs text-purple-600">{data.recommendation}</p>
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between text-xs text-slate-400">
+        <span>
+          Généré à {new Date(data.generated_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+        </span>
+        <button
+          onClick={handleRefresh}
+          disabled={isFetching}
+          className="flex items-center gap-1 text-purple-500 hover:text-purple-700 disabled:opacity-50"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
+          Rafraîchir
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main page
+// ---------------------------------------------------------------------------
+
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data, isLoading, error, refetch, isFetching } = useProject(id!);
+  const [view, setView] = useState<"timeline" | "gantt">("timeline");
 
   const project = data?.project;
 
@@ -251,6 +418,9 @@ export default function ProjectDetailPage() {
               <TrackingTokenBlock token={project.tracking_token} />
             )}
 
+            {/* Analyse IA des risques */}
+            <RiskPanel projectId={project.id} />
+
             {/* Active anomalies */}
             {project.notifications.length > 0 && (
               <div className="bg-white rounded-lg border border-red-200 p-4">
@@ -278,18 +448,45 @@ export default function ProjectDetailPage() {
             )}
           </aside>
 
-          {/* Main — timeline */}
+          {/* Main — timeline or gantt */}
           <div className="flex-1 min-w-0">
+            {/* Tab switcher */}
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-slate-800">Timeline du projet</h2>
+              <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
+                <button
+                  onClick={() => setView("timeline")}
+                  className={`text-sm px-3 py-1.5 rounded-md font-medium transition-colors ${
+                    view === "timeline"
+                      ? "bg-white text-slate-800 shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  Timeline
+                </button>
+                <button
+                  onClick={() => setView("gantt")}
+                  className={`text-sm px-3 py-1.5 rounded-md font-medium transition-colors ${
+                    view === "gantt"
+                      ? "bg-white text-slate-800 shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  Diagramme
+                </button>
+              </div>
               <p className="text-xs text-slate-400">
                 Mis à jour {formatDate(project.updated_at)}
               </p>
             </div>
-            <ProjectTimeline
-              projectId={project.id}
-              groups={buildGroups(project)}
-            />
+
+            {view === "timeline" ? (
+              <ProjectTimeline
+                projectId={project.id}
+                groups={buildGroups(project)}
+              />
+            ) : (
+              <ProjectGantt project={project} />
+            )}
           </div>
         </div>
       )}
