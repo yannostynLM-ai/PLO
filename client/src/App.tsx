@@ -9,6 +9,7 @@ import ProjectDetailPage from "./pages/ProjectDetailPage.tsx";
 import AnomaliesPage from "./pages/AnomaliesPage.tsx";
 import RulesPage from "./pages/RulesPage.tsx";
 import DashboardPage from "./pages/DashboardPage.tsx";
+import TrackingPage from "./pages/TrackingPage.tsx";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,6 +30,10 @@ const router = createBrowserRouter([
       { path: "/anomalies", element: <AnomaliesPage /> },
       { path: "/rules", element: <RulesPage /> },
     ],
+  },
+  {
+    path: "/suivi/:token",
+    element: <TrackingPage />,
   },
 ]);
 

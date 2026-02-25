@@ -158,6 +158,8 @@ model Project {
   status         ProjectStatus @default(draft)
   metadata       Json?
 
+  tracking_token String?  @unique  // Sprint 7 : token URL de suivi client
+
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 

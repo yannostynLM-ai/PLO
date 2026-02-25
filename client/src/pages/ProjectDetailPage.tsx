@@ -9,7 +9,8 @@ import {
   projectStatusLabel,
   projectTypeLabel,
 } from "../lib/utils.ts";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, RefreshCw, Copy, Check } from "lucide-react";
+import { useState } from "react";
 
 // Build timeline groups from project data
 function buildGroups(project: {
@@ -31,6 +32,36 @@ function buildGroups(project: {
     ...orderGroups,
     ...(installSteps.length > 0 ? [{ label: "Installation", steps: installSteps }] : []),
   ];
+}
+
+function TrackingTokenBlock({ token }: { token: string }) {
+  const [copied, setCopied] = useState(false);
+  const url = `${window.location.origin}/suivi/${token}`;
+
+  const handleCopy = () => {
+    void navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <div className="bg-white rounded-lg border border-slate-200 p-4">
+      <h3 className="font-semibold text-slate-700 text-sm mb-2">Lien de suivi client</h3>
+      <div className="flex items-center gap-2">
+        <code className="text-xs text-slate-500 bg-slate-50 border border-slate-200 px-2 py-1.5 rounded flex-1 truncate">
+          /suivi/{token}
+        </code>
+        <button
+          onClick={handleCopy}
+          title="Copier le lien"
+          className="flex-shrink-0 p-1.5 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+        >
+          {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function ProjectDetailPage() {
@@ -213,6 +244,11 @@ export default function ProjectDetailPage() {
                   )}
                 </dl>
               </div>
+            )}
+
+            {/* Lien de suivi client */}
+            {project.tracking_token && (
+              <TrackingTokenBlock token={project.tracking_token} />
             )}
 
             {/* Active anomalies */}

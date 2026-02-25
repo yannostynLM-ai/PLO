@@ -63,6 +63,7 @@ export interface ProjectDetail {
   store_id: string | null;
   created_at: string;
   updated_at: string;
+  tracking_token: string | null;
   orders: OrderDetail[];
   consolidation: {
     id: string;
@@ -114,6 +115,55 @@ export interface AnomalyRule {
   action: unknown;
   created_at: string;
   updated_at: string;
+}
+
+export interface TrackingMilestone {
+  key: string;
+  label: string;
+  status: "completed" | "in_progress" | "pending";
+  date: string | null;
+}
+
+export interface TrackingData {
+  project_ref: string;
+  project_type_label: string;
+  status: string;
+  created_at: string;
+  milestones: TrackingMilestone[];
+  orders: Array<{
+    ref: string | null;
+    status: string;
+    promised_delivery_date: string | null;
+    promised_installation_date: string | null;
+    lines_count: number;
+    shipments: Array<{
+      carrier: string | null;
+      carrier_tracking_ref: string | null;
+      status: string;
+      estimated_arrival: string | null;
+      actual_arrival: string | null;
+    }>;
+  }>;
+  consolidation: {
+    status: string;
+    orders_arrived: number;
+    orders_required: number;
+    estimated_complete_date: string | null;
+  } | null;
+  last_mile: {
+    status: string;
+    scheduled_date: string | null;
+    scheduled_slot: string | null;
+    delivered_at: string | null;
+    is_partial: boolean;
+  } | null;
+  installation: {
+    status: string;
+    scheduled_date: string | null;
+    scheduled_slot: string | null;
+    technician_name: string | null;
+    completed_at: string | null;
+  } | null;
 }
 
 export interface Stats {
@@ -211,6 +261,15 @@ export function useAcknowledge() {
       void qc.invalidateQueries({ queryKey: ["projects"] });
       void qc.invalidateQueries({ queryKey: ["project"] });
     },
+  });
+}
+
+export function useTracking(token: string) {
+  return useQuery<TrackingData>({
+    queryKey: ["tracking", token],
+    queryFn: () => apiFetch<TrackingData>(`/api/public/tracking/${token}`),
+    refetchInterval: 60_000,
+    retry: false,
   });
 }
 

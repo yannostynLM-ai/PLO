@@ -174,6 +174,7 @@ async function main() {
       customer_id: "CRM-DUBOIS-2025",
       project_type: "kitchen",
       status: "active",
+      tracking_token: "dubois-2024-suivi",  // Sprint 7 — token URL de suivi client
       metadata: {
         project_name: "Cuisine Famille Dubois",
         contact_email: "jean.dubois@email.fr",
