@@ -1,6 +1,8 @@
+import { randomUUID } from "crypto";
 import { prisma } from "../lib/prisma.js";
 import { sendEmail } from "./email.service.js";
 import { createCrmTicketForNotification } from "./crm-ticket.service.js";
+import { broadcastNotification } from "./sse.service.js";
 import type { RuleResult } from "../anomaly/types.js";
 
 // =============================================================================
@@ -82,11 +84,11 @@ export async function handleRuleResult(result: RuleResult): Promise<void> {
     })
   );
 
-  // Sprint 6 — Ticket CRM pour les règles critiques
+  // Sprint 6 — Ticket CRM pour les règles critiques + Sprint 11 broadcast SSE
   if (createdNotifIds.length > 0) {
     const rule = await prisma.anomalyRule.findUnique({
       where: { id: result.ruleId },
-      select: { severity: true },
+      select: { severity: true, name: true },
     });
     if (rule?.severity === "critical") {
       await createCrmTicketForNotification(
@@ -95,6 +97,23 @@ export async function handleRuleResult(result: RuleResult): Promise<void> {
         result.ruleId,
         result.subject
       );
+    }
+    if (rule) {
+      const project = await prisma.project.findUnique({
+        where: { id: result.projectId },
+        select: { customer_id: true, project_type: true },
+      });
+      if (project) {
+        broadcastNotification({
+          id: createdNotifIds[0],
+          project_id: result.projectId,
+          rule_name: rule.name,
+          severity: rule.severity,
+          project_customer_id: project.customer_id,
+          project_type: project.project_type as string,
+          sent_at: now.toISOString(),
+        });
+      }
     }
   }
 
@@ -160,4 +179,29 @@ export async function handleScheduledRuleResult(
       });
     })
   );
+
+  // Sprint 11 — Broadcast SSE pour les règles planifiées
+  if (result.recipients.length > 0) {
+    const [ruleData, projectData] = await Promise.all([
+      prisma.anomalyRule.findUnique({
+        where: { id: result.ruleId },
+        select: { name: true, severity: true },
+      }),
+      prisma.project.findUnique({
+        where: { id: result.projectId },
+        select: { customer_id: true, project_type: true },
+      }),
+    ]);
+    if (ruleData && projectData) {
+      broadcastNotification({
+        id: randomUUID(),
+        project_id: result.projectId,
+        rule_name: ruleData.name,
+        severity: ruleData.severity,
+        project_customer_id: projectData.customer_id,
+        project_type: projectData.project_type as string,
+        sent_at: now.toISOString(),
+      });
+    }
+  }
 }

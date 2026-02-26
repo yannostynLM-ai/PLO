@@ -1,6 +1,7 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { LayoutList, AlertTriangle, Settings, Activity, BarChart2, LogOut, Users } from "lucide-react";
 import { useCurrentUser, useLogout } from "../lib/api.ts";
+import NotificationBell from "./NotificationBell.tsx";
 
 function RoleBadge({ role }: { role: string }) {
   const styles: Record<string, string> = {
@@ -44,9 +45,12 @@ export default function AppLayout() {
       {/* Sidebar */}
       <aside className="w-56 flex-shrink-0 bg-slate-900 flex flex-col">
         <div className="px-4 py-5 border-b border-slate-700">
-          <div className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-blue-400" />
-            <span className="font-bold text-white text-sm">PLO</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-blue-400" />
+              <span className="font-bold text-white text-sm">PLO</span>
+            </div>
+            <NotificationBell />
           </div>
           <p className="text-xs text-slate-400 mt-0.5">Project Lifecycle</p>
         </div>
@@ -95,7 +99,7 @@ export default function AppLayout() {
             <LogOut className="h-4 w-4" />
             {logout.isPending ? "Déconnexion…" : "Déconnexion"}
           </button>
-          <p className="text-xs text-slate-600 px-1">v1.0 — Sprint 10</p>
+          <p className="text-xs text-slate-600 px-1">v1.0 — Sprint 11</p>
         </div>
       </aside>
 

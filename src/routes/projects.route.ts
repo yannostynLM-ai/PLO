@@ -1,4 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
+import { z } from "zod";
+import type { ProjectStatus, ProjectType } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 
 // =============================================================================
@@ -6,6 +8,14 @@ import { prisma } from "../lib/prisma.js";
 // GET /api/projects       — liste avec sévérité anomalie calculée
 // GET /api/projects/:id   — détail complet
 // =============================================================================
+
+const ProjectsQuerySchema = z.object({
+  q:        z.string().optional(),
+  status:   z.string().optional(),
+  severity: z.enum(["ok", "warning", "critical"]).optional(),
+  type:     z.string().optional(),
+  store:    z.string().optional(),
+});
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -17,10 +27,28 @@ export const projectsRoute: FastifyPluginAsync = async (fastify) => {
   // --------------------------------------------------------------------------
   // GET /api/projects
   // --------------------------------------------------------------------------
-  fastify.get("/api/projects", async (_request, reply) => {
+  fastify.get("/api/projects", async (request, reply) => {
+    const parseResult = ProjectsQuerySchema.safeParse(request.query);
+    if (!parseResult.success) {
+      return reply.code(422).send({
+        statusCode: 422,
+        error: "Unprocessable Entity",
+        message: parseResult.error.issues[0]?.message ?? "Invalid query params",
+      });
+    }
+    const { q, status, severity, type, store } = parseResult.data;
+
+    const where = {
+      ...(q      ? { customer_id:  { contains: q,     mode: "insensitive" as const } } : {}),
+      ...(status ? { status:       status as ProjectStatus  } : {}),
+      ...(type   ? { project_type: type   as ProjectType    } : {}),
+      ...(store  ? { store_id:     { contains: store, mode: "insensitive" as const } } : {}),
+    };
+
     const since = sevenDaysAgo();
 
     const projects = await prisma.project.findMany({
+      where,
       include: {
         notifications: {
           where: {
@@ -94,7 +122,11 @@ export const projectsRoute: FastifyPluginAsync = async (fastify) => {
       return 0;
     });
 
-    return reply.send({ projects: result });
+    const finalResult = severity
+      ? result.filter((p) => p.anomaly_severity === severity)
+      : result;
+
+    return reply.send({ projects: finalResult });
   });
 
   // --------------------------------------------------------------------------

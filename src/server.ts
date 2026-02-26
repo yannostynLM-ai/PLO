@@ -14,6 +14,7 @@ import { statsRoute } from "./routes/stats.route.js";
 import { trackingRoute } from "./routes/tracking.route.js";
 import { riskRoute } from "./routes/risk.route.js";
 import { usersRoute } from "./routes/users.route.js";
+import { sseRoute } from "./routes/sse.route.js";
 import { config } from "./config.js";
 
 // =============================================================================
@@ -70,6 +71,7 @@ export async function buildServer() {
     await operatorScope.register(statsRoute);
     await operatorScope.register(riskRoute);
     await operatorScope.register(usersRoute);
+    await operatorScope.register(sseRoute);
   });
 
   // ── Scope ingest — protégé par Bearer per-source (inchangé) ───────────────

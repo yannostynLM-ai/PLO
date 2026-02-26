@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect, useCallback } from "react";
 
 // =============================================================================
 // Types API
@@ -212,12 +213,57 @@ export function apiIngest(body: Record<string, unknown>) {
 // React Query hooks
 // =============================================================================
 
-export function useProjects() {
+export interface ProjectFilters {
+  q?: string;
+  status?: string;
+  severity?: string;
+  type?: string;
+  store?: string;
+}
+
+export function useProjects(filters?: ProjectFilters) {
+  const params = new URLSearchParams();
+  if (filters?.q)        params.set("q",        filters.q);
+  if (filters?.status)   params.set("status",   filters.status);
+  if (filters?.severity) params.set("severity", filters.severity);
+  if (filters?.type)     params.set("type",     filters.type);
+  if (filters?.store)    params.set("store",    filters.store);
+  const qs = params.toString() ? `?${params.toString()}` : "";
+
   return useQuery({
-    queryKey: ["projects"],
-    queryFn: () => apiFetch<{ projects: ProjectSummary[] }>("/api/projects"),
+    queryKey: ["projects", filters ?? {}],
+    queryFn: () => apiFetch<{ projects: ProjectSummary[] }>(`/api/projects${qs}`),
     refetchInterval: 30_000,
   });
+}
+
+export interface SseNotificationPayload {
+  id: string;
+  project_id: string;
+  rule_name: string;
+  severity: string;
+  project_customer_id: string;
+  project_type: string;
+  sent_at: string;
+}
+
+export function useSSENotifications() {
+  const [notifications, setNotifications] = useState<SseNotificationPayload[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const es = new EventSource("/api/sse/notifications");
+    es.onmessage = (event) => {
+      const payload = JSON.parse(event.data as string) as SseNotificationPayload;
+      setNotifications((prev) => [payload, ...prev].slice(0, 50));
+      setUnreadCount((prev) => prev + 1);
+    };
+    return () => es.close();
+  }, []);
+
+  const markAllRead = useCallback(() => setUnreadCount(0), []);
+
+  return { notifications, unreadCount, markAllRead };
 }
 
 export function useProject(id: string) {
