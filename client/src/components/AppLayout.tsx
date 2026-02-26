@@ -1,13 +1,43 @@
-import { Outlet, NavLink } from "react-router-dom";
-import { LayoutList, AlertTriangle, Settings, Activity, BarChart2 } from "lucide-react";
+import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { LayoutList, AlertTriangle, Settings, Activity, BarChart2, LogOut } from "lucide-react";
+import { useCurrentUser, useLogout } from "../lib/api.ts";
+
+function RoleBadge({ role }: { role: string }) {
+  const styles: Record<string, string> = {
+    admin: "bg-purple-900 text-purple-300",
+    coordinator: "bg-blue-900 text-blue-300",
+    viewer: "bg-slate-700 text-slate-400",
+  };
+  const labels: Record<string, string> = {
+    admin: "Admin",
+    coordinator: "Coordinateur",
+    viewer: "Lecteur",
+  };
+  return (
+    <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${styles[role] ?? styles.viewer}`}>
+      {labels[role] ?? role}
+    </span>
+  );
+}
 
 export default function AppLayout() {
+  const navigate = useNavigate();
+  const { data: meData } = useCurrentUser();
+  const logout = useLogout();
+  const user = meData?.user;
+
   const navClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
       isActive
         ? "bg-slate-800 text-white"
         : "text-slate-300 hover:bg-slate-700 hover:text-white"
     }`;
+
+  const handleLogout = () => {
+    logout.mutate(undefined, {
+      onSuccess: () => void navigate("/login", { replace: true }),
+    });
+  };
 
   return (
     <div className="flex h-screen bg-slate-50">
@@ -40,8 +70,26 @@ export default function AppLayout() {
           </NavLink>
         </nav>
 
-        <div className="px-4 py-3 border-t border-slate-700">
-          <p className="text-xs text-slate-500">v1.0 — Sprint 6</p>
+        {/* User info + logout */}
+        <div className="px-3 py-3 border-t border-slate-700 space-y-2">
+          {user && (
+            <div className="px-1 space-y-1">
+              <p className="text-xs text-white font-medium truncate">{user.name}</p>
+              <p className="text-xs text-slate-400 truncate">{user.email}</p>
+              <RoleBadge role={user.role} />
+            </div>
+          )}
+          <button
+            onClick={handleLogout}
+            disabled={logout.isPending}
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm
+                       text-slate-400 hover:bg-slate-700 hover:text-white transition-colors
+                       disabled:opacity-50"
+          >
+            <LogOut className="h-4 w-4" />
+            {logout.isPending ? "Déconnexion…" : "Déconnexion"}
+          </button>
+          <p className="text-xs text-slate-600 px-1">v1.0 — Sprint 9</p>
         </div>
       </aside>
 

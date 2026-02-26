@@ -7,6 +7,7 @@
 // =============================================================================
 
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import { validateStep } from "../lib/validators.js";
 import { RULE_IDS } from "../anomaly/rule-ids.js";
 
@@ -1103,6 +1104,23 @@ async function main() {
   console.log("  • 22 AnomalyRules (ANO-01 à ANO-22 — 14 temps réel, 8 cron)");
   console.log("  • 1 Notification (internal_alert, pending)");
   console.log("\n🔍 Visualiser : pnpm prisma studio");
+
+  // -----------------------------------------------------------------------
+  // Sprint 9 — Admin user (idempotent upsert)
+  // -----------------------------------------------------------------------
+  const adminEmail = process.env.ADMIN_EMAIL ?? "admin@plo.local";
+  const adminPassword = process.env.ADMIN_PASSWORD ?? "";
+  if (adminPassword) {
+    const hash = await bcrypt.hash(adminPassword, 10);
+    await prisma.user.upsert({
+      where: { email: adminEmail },
+      update: { password_hash: hash, name: "Admin PLO", role: "admin" },
+      create: { email: adminEmail, password_hash: hash, name: "Admin PLO", role: "admin" },
+    });
+    console.log(`\n9b. Admin user upserted (${adminEmail})`);
+  } else {
+    console.log("\n⚠  ADMIN_PASSWORD non défini — skip seedAdminUser()");
+  }
 }
 
 main()

@@ -73,6 +73,12 @@ export const config = {
 
   // Sprint 8 — Agent IA (laisser vide pour mode fallback heuristique)
   ANTHROPIC_API_KEY: optional("ANTHROPIC_API_KEY", ""),
+
+  // Sprint 9 — JWT operator auth
+  JWT_SECRET: required("JWT_SECRET"),
+  JWT_EXPIRES_IN: optional("JWT_EXPIRES_IN", "8h"),
+  ADMIN_EMAIL: optional("ADMIN_EMAIL", "admin@plo.local"),
+  ADMIN_PASSWORD: optional("ADMIN_PASSWORD", ""),
 };
 
 export type SourceFromKey = EventSource;

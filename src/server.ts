@@ -1,7 +1,11 @@
 import Fastify from "fastify";
 import sensible from "@fastify/sensible";
 import cors from "@fastify/cors";
+import cookie from "@fastify/cookie";
+import jwt from "@fastify/jwt";
 import authPlugin from "./plugins/auth.plugin.js";
+import jwtAuthPlugin from "./plugins/jwt-auth.plugin.js";
+import { authRoute } from "./routes/auth.route.js";
 import { ingestRoute } from "./routes/ingest.route.js";
 import { projectsRoute } from "./routes/projects.route.js";
 import { anomaliesRoute } from "./routes/anomalies.route.js";
@@ -26,26 +30,47 @@ export async function buildServer() {
     },
   });
 
-  // Plugins globaux (sans auth)
+  // ── Plugins globaux ────────────────────────────────────────────────────────
   await fastify.register(sensible);
   await fastify.register(cors, { origin: true });
 
-  // Health check — public, sans authentification
+  // @fastify/cookie et @fastify/jwt enregistrés globalement :
+  // - authRoute les utilise pour signer le token et poser le cookie
+  // - jwtAuthPlugin les utilise pour lire et vérifier le cookie
+  await fastify.register(cookie);
+  await fastify.register(jwt, {
+    secret: config.JWT_SECRET,
+    cookie: {
+      cookieName: "plo_session",
+      signed: false,
+    },
+  });
+
+  // ── Health check — public ──────────────────────────────────────────────────
   fastify.get("/health", async () => ({
     status: "ok",
     version: "1.0.0",
     timestamp: new Date().toISOString(),
   }));
 
-  // Routes publiques — lecture seule (pas d'auth)
-  await fastify.register(projectsRoute);
-  await fastify.register(anomaliesRoute);
-  await fastify.register(rulesRoute);
-  await fastify.register(statsRoute);
+  // ── Routes publiques — sans authentification ───────────────────────────────
+  // Portail client suivi (token URL) — reste 100% public
   await fastify.register(trackingRoute);
-  await fastify.register(riskRoute);
 
-  // Routes protégées — auth Bearer par source
+  // Login / logout / me
+  await fastify.register(authRoute);
+
+  // ── Scope opérateur — protégé par JWT cookie ───────────────────────────────
+  await fastify.register(async (operatorScope) => {
+    await operatorScope.register(jwtAuthPlugin);
+    await operatorScope.register(projectsRoute);
+    await operatorScope.register(anomaliesRoute);
+    await operatorScope.register(rulesRoute);
+    await operatorScope.register(statsRoute);
+    await operatorScope.register(riskRoute);
+  });
+
+  // ── Scope ingest — protégé par Bearer per-source (inchangé) ───────────────
   await fastify.register(async (api) => {
     await api.register(authPlugin);
     await api.register(ingestRoute);

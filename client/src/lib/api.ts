@@ -297,6 +297,47 @@ export interface RiskAnalysis {
   cached: boolean;
 }
 
+// =============================================================================
+// Sprint 9 — Auth hooks
+// =============================================================================
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+}
+
+export function useCurrentUser() {
+  return useQuery<{ user: AuthUser }>({
+    queryKey: ["me"],
+    queryFn: () => apiFetch<{ user: AuthUser }>("/api/auth/me"),
+    retry: false,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useLogin() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ email, password }: { email: string; password: string }) =>
+      apiFetch<{ user: AuthUser }>("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["me"] }),
+  });
+}
+
+export function useLogout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<{ message: string }>("/api/auth/logout", { method: "POST" }),
+    onSuccess: () => qc.clear(),
+  });
+}
+
 export function useRiskAnalysis(projectId: string, enabled: boolean) {
   const qc = useQueryClient();
   const query = useQuery<RiskAnalysis>({

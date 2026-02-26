@@ -144,6 +144,13 @@ enum NotificationStatus {
   failed
 }
 
+// Sprint 9 — Authentification opérateur
+enum UserRole {
+  admin
+  coordinator
+  viewer
+}
+
 // =============================================================================
 // ENTITÉS
 // =============================================================================
@@ -432,6 +439,19 @@ model AnomalyRule {
   notifications Notification[]
 
   @@map("anomaly_rules")
+}
+
+// 13. User — Opérateur PLO (auth interne PoC, SSO-ready par email)
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password_hash String
+  name          String
+  role          UserRole @default(viewer)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@map("users")
 }
 
 // 12. Notification — Notification sortante
