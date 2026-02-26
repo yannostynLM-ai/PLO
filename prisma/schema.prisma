@@ -179,6 +179,7 @@ model Project {
   steps            Step[]
   events           Event[]
   notifications    Notification[]
+  notes            ProjectNote[]
 
   @@map("projects")
 }
@@ -453,6 +454,20 @@ model User {
 
   @@map("users")
 }
+
+// 14. ProjectNote — Notes opérateur sur un projet (Sprint 15)
+model ProjectNote {
+  id          String   @id @default(uuid())
+  project_id  String
+  content     String
+  author_name String
+  created_at  DateTime @default(now())
+
+  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@map("project_notes")
+}
+
 
 // 12. Notification — Notification sortante
 model Notification {

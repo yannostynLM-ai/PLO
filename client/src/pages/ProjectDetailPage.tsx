@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useProject, useRiskAnalysis } from "../lib/api.ts";
+import { useProject, useRiskAnalysis, useUpdateProject, useAddProjectNote, useCurrentUser } from "../lib/api.ts";
 import type { StepDetail, OrderDetail } from "../lib/api.ts";
 import ProjectTimeline from "../components/ProjectTimeline.tsx";
 import ProjectGantt from "../components/ProjectGantt.tsx";
@@ -10,7 +10,7 @@ import {
   projectStatusLabel,
   projectTypeLabel,
 } from "../lib/utils.ts";
-import { ArrowLeft, RefreshCw, Copy, Check, Brain, AlertTriangle, Loader2 } from "lucide-react";
+import { ArrowLeft, RefreshCw, Copy, Check, Brain, AlertTriangle, Loader2, ChevronDown, StickyNote } from "lucide-react";
 import { useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -236,6 +236,16 @@ export default function ProjectDetailPage() {
   const { data, isLoading, error, refetch, isFetching } = useProject(id!);
   const [view, setView] = useState<"timeline" | "gantt">("timeline");
 
+  // Sprint 15 — status editor
+  const [editStatus, setEditStatus] = useState(false);
+  const updateProject = useUpdateProject();
+
+  // Sprint 15 — notes
+  const addNote = useAddProjectNote();
+  const { data: authData } = useCurrentUser();
+  const [noteText, setNoteText] = useState("");
+  const [isAddingNote, setIsAddingNote] = useState(false);
+
   const project = data?.project;
 
   return (
@@ -284,12 +294,39 @@ export default function ProjectDetailPage() {
                   <dt className="text-slate-500">Type</dt>
                   <dd className="font-medium">{projectTypeLabel(project.project_type)}</dd>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <dt className="text-slate-500">Statut</dt>
                   <dd>
-                    <span className="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-600">
-                      {projectStatusLabel(project.status)}
-                    </span>
+                    {editStatus ? (
+                      <select
+                        defaultValue={project.status}
+                        autoFocus
+                        onBlur={(e) => {
+                          void updateProject.mutateAsync({ id: project.id, status: e.target.value });
+                          setEditStatus(false);
+                        }}
+                        onChange={(e) => {
+                          void updateProject.mutateAsync({ id: project.id, status: e.target.value });
+                          setEditStatus(false);
+                        }}
+                        className="text-xs border border-blue-300 rounded px-2 py-0.5 focus:outline-none focus:border-blue-400"
+                      >
+                        <option value="draft">Brouillon</option>
+                        <option value="active">Actif</option>
+                        <option value="on_hold">En attente</option>
+                        <option value="completed">Terminé</option>
+                        <option value="cancelled">Annulé</option>
+                      </select>
+                    ) : (
+                      <button
+                        onClick={() => setEditStatus(true)}
+                        title="Modifier le statut"
+                        className="flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+                      >
+                        {projectStatusLabel(project.status)}
+                        <ChevronDown className="h-3 w-3 opacity-50" />
+                      </button>
+                    )}
                   </dd>
                 </div>
                 <div className="flex justify-between">
@@ -446,6 +483,83 @@ export default function ProjectDetailPage() {
                 </div>
               </div>
             )}
+
+            {/* Notes opérateur */}
+            <div className="bg-white rounded-lg border border-slate-200 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
+                  <StickyNote className="h-4 w-4 text-slate-400" />
+                  Notes ({project.notes.length})
+                </h3>
+                {!isAddingNote && (
+                  <button
+                    onClick={() => setIsAddingNote(true)}
+                    className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    + Ajouter
+                  </button>
+                )}
+              </div>
+
+              {isAddingNote && (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!noteText.trim()) return;
+                    void addNote
+                      .mutateAsync({
+                        projectId: project.id,
+                        content: noteText.trim(),
+                        author_name: authData?.user?.name ?? "Opérateur",
+                      })
+                      .then(() => {
+                        setNoteText("");
+                        setIsAddingNote(false);
+                      });
+                  }}
+                  className="mb-3"
+                >
+                  <textarea
+                    autoFocus
+                    value={noteText}
+                    onChange={(e) => setNoteText(e.target.value)}
+                    rows={3}
+                    placeholder="Ajouter une note…"
+                    className="w-full text-sm border border-slate-200 rounded px-3 py-2 resize-none focus:outline-none focus:border-blue-400 mb-2"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="submit"
+                      disabled={addNote.isPending || !noteText.trim()}
+                      className="text-xs bg-blue-600 text-white rounded px-3 py-1.5 hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {addNote.isPending ? "Ajout…" : "Ajouter"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setIsAddingNote(false); setNoteText(""); }}
+                      className="text-xs text-slate-500 border border-slate-200 rounded px-3 py-1.5 hover:bg-slate-50"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              <div className="space-y-2">
+                {project.notes.length === 0 && !isAddingNote && (
+                  <p className="text-xs text-slate-400 italic">Aucune note</p>
+                )}
+                {project.notes.map((note) => (
+                  <div key={note.id} className="border-l-2 border-slate-200 pl-3 py-1">
+                    <p className="text-xs text-slate-700 whitespace-pre-wrap">{note.content}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {note.author_name} · {formatDate(note.created_at)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </aside>
 
           {/* Main — timeline or gantt */}

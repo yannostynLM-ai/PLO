@@ -5,11 +5,13 @@ import type { ProjectStatus, ProjectType } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 
 // =============================================================================
-// Routes — Projets (Sprint 14 : POST /api/projects ajouté)
-// POST /api/projects           — créer un projet
-// GET /api/projects            — liste avec sévérité anomalie calculée
-// GET /api/projects/export.csv — export CSV (mêmes filtres)
-// GET /api/projects/:id        — détail complet
+// Routes — Projets (Sprint 15 : PATCH + notes ajoutés)
+// POST   /api/projects             — créer un projet
+// GET    /api/projects             — liste avec sévérité anomalie calculée
+// GET    /api/projects/export.csv  — export CSV (mêmes filtres)
+// PATCH  /api/projects/:id         — mise à jour statut / magasin
+// POST   /api/projects/:id/notes   — ajouter une note opérateur
+// GET    /api/projects/:id         — détail complet (inclut notes)
 // =============================================================================
 
 const CreateProjectSchema = z.object({
@@ -18,6 +20,16 @@ const CreateProjectSchema = z.object({
   channel_origin: z.enum(["store", "web", "mixed"]).default("store"),
   store_id:       z.string().optional(),
   status:         z.enum(["draft", "active", "on_hold", "completed", "cancelled"]).default("draft"),
+});
+
+const PatchProjectSchema = z.object({
+  status:   z.enum(["draft", "active", "on_hold", "completed", "cancelled"]).optional(),
+  store_id: z.string().nullable().optional(),
+});
+
+const CreateNoteSchema = z.object({
+  content:     z.string().min(1, "content requis"),
+  author_name: z.string().min(1, "author_name requis"),
 });
 
 // Helper CSV — échappe les virgules et guillemets
@@ -263,6 +275,82 @@ export const projectsRoute: FastifyPluginAsync = async (fastify) => {
   });
 
   // --------------------------------------------------------------------------
+  // PATCH /api/projects/:id  — mise à jour statut / magasin
+  // --------------------------------------------------------------------------
+  fastify.patch<{ Params: { id: string } }>(
+    "/api/projects/:id",
+    async (request, reply) => {
+      const { id } = request.params;
+
+      const parsed = PatchProjectSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.code(422).send({
+          statusCode: 422,
+          error: "Unprocessable Entity",
+          message: parsed.error.issues[0]?.message ?? "Payload invalide",
+          details: parsed.error.flatten(),
+        });
+      }
+
+      const existing = await prisma.project.findUnique({
+        where: { id },
+        select: { id: true },
+      });
+      if (!existing) {
+        return reply.code(404).send({
+          statusCode: 404,
+          error: "Not Found",
+          message: "Projet introuvable",
+        });
+      }
+
+      const project = await prisma.project.update({
+        where: { id },
+        data: parsed.data,
+        select: { id: true, status: true, store_id: true, updated_at: true },
+      });
+      return reply.send({ project });
+    }
+  );
+
+  // --------------------------------------------------------------------------
+  // POST /api/projects/:id/notes  — ajouter une note opérateur
+  // --------------------------------------------------------------------------
+  fastify.post<{ Params: { id: string } }>(
+    "/api/projects/:id/notes",
+    async (request, reply) => {
+      const { id } = request.params;
+
+      const parsed = CreateNoteSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.code(422).send({
+          statusCode: 422,
+          error: "Unprocessable Entity",
+          message: parsed.error.issues[0]?.message ?? "Payload invalide",
+          details: parsed.error.flatten(),
+        });
+      }
+
+      const project = await prisma.project.findUnique({
+        where: { id },
+        select: { id: true },
+      });
+      if (!project) {
+        return reply.code(404).send({
+          statusCode: 404,
+          error: "Not Found",
+          message: "Projet introuvable",
+        });
+      }
+
+      const note = await prisma.projectNote.create({
+        data: { project_id: id, ...parsed.data },
+      });
+      return reply.code(201).send({ note });
+    }
+  );
+
+  // --------------------------------------------------------------------------
   // GET /api/projects/:id
   // --------------------------------------------------------------------------
   fastify.get<{ Params: { id: string } }>(
@@ -318,6 +406,9 @@ export const projectsRoute: FastifyPluginAsync = async (fastify) => {
             },
             orderBy: { sent_at: "desc" },
             take: 30,
+          },
+          notes: {
+            orderBy: { created_at: "desc" },
           },
         },
       });

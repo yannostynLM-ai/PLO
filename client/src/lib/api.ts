@@ -90,6 +90,7 @@ export interface ProjectDetail {
   steps: StepDetail[];
   events: EventDetail[];
   notifications: AnomalyNotification[];
+  notes: ProjectNote[];
 }
 
 export interface AnomalyNotification {
@@ -103,6 +104,14 @@ export interface AnomalyNotification {
   rule: { id: string; name: string; severity: AnomalySeverity; scope: string } | null;
   project: { id: string; customer_id: string; project_type: string; status: string } | null;
   event: { id: string; event_type: string; acknowledged_by: string | null; created_at: string } | null;
+}
+
+export interface ProjectNote {
+  id: string;
+  project_id: string;
+  content: string;
+  author_name: string;
+  created_at: string;
 }
 
 export interface AnomalyRule {
@@ -586,6 +595,35 @@ export function useCreateProject() {
         body: JSON.stringify(body),
       }),
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ["projects"] }); },
+  });
+}
+
+export function useUpdateProject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string; status?: string; store_id?: string | null }) =>
+      apiFetch<{ project: { id: string; status: string; store_id: string | null } }>(
+        `/api/projects/${id}`,
+        { method: "PATCH", body: JSON.stringify(body) }
+      ),
+    onSuccess: (_data, { id }) => {
+      void qc.invalidateQueries({ queryKey: ["project", id] });
+      void qc.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+}
+
+export function useAddProjectNote() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, content, author_name }: { projectId: string; content: string; author_name: string }) =>
+      apiFetch<{ note: ProjectNote }>(`/api/projects/${projectId}/notes`, {
+        method: "POST",
+        body: JSON.stringify({ content, author_name }),
+      }),
+    onSuccess: (_data, { projectId }) => {
+      void qc.invalidateQueries({ queryKey: ["project", projectId] });
+    },
   });
 }
 
