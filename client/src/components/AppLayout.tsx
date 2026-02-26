@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { LayoutList, AlertTriangle, Settings, Activity, BarChart2, LogOut } from "lucide-react";
+import { LayoutList, AlertTriangle, Settings, Activity, BarChart2, LogOut, Users } from "lucide-react";
 import { useCurrentUser, useLogout } from "../lib/api.ts";
 
 function RoleBadge({ role }: { role: string }) {
@@ -68,6 +68,12 @@ export default function AppLayout() {
             <Settings className="h-4 w-4" />
             Règles
           </NavLink>
+          {user?.role === "admin" && (
+            <NavLink to="/users" className={navClass}>
+              <Users className="h-4 w-4" />
+              Utilisateurs
+            </NavLink>
+          )}
         </nav>
 
         {/* User info + logout */}
@@ -89,7 +95,7 @@ export default function AppLayout() {
             <LogOut className="h-4 w-4" />
             {logout.isPending ? "Déconnexion…" : "Déconnexion"}
           </button>
-          <p className="text-xs text-slate-600 px-1">v1.0 — Sprint 9</p>
+          <p className="text-xs text-slate-600 px-1">v1.0 — Sprint 10</p>
         </div>
       </aside>
 

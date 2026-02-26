@@ -351,6 +351,63 @@ export function useRiskAnalysis(projectId: string, enabled: boolean) {
   return { ...query, refresh };
 }
 
+// =============================================================================
+// Sprint 10 — Users hooks
+// =============================================================================
+
+export interface UserSummary {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useUsers() {
+  return useQuery<{ users: UserSummary[] }>({
+    queryKey: ["users"],
+    queryFn: () => apiFetch<{ users: UserSummary[] }>("/api/users"),
+  });
+}
+
+export function useCreateUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { email: string; name: string; password: string; role: string }) =>
+      apiFetch<{ user: UserSummary }>("/api/users", { method: "POST", body: JSON.stringify(body) }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["users"] }),
+  });
+}
+
+export function useUpdateUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string; name?: string; role?: string }) =>
+      apiFetch<{ user: UserSummary }>(`/api/users/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["users"] }),
+  });
+}
+
+export function useDeleteUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ message: string }>(`/api/users/${id}`, { method: "DELETE" }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["users"] }),
+  });
+}
+
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: ({ id, password }: { id: string; password: string }) =>
+      apiFetch<{ message: string }>(`/api/users/${id}/reset-password`, {
+        method: "POST",
+        body: JSON.stringify({ password }),
+      }),
+  });
+}
+
 export function useToggleRule() {
   const qc = useQueryClient();
   return useMutation({

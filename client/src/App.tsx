@@ -12,6 +12,7 @@ import AnomaliesPage from "./pages/AnomaliesPage.tsx";
 import RulesPage from "./pages/RulesPage.tsx";
 import DashboardPage from "./pages/DashboardPage.tsx";
 import TrackingPage from "./pages/TrackingPage.tsx";
+import UsersPage from "./pages/UsersPage.tsx";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -44,6 +45,7 @@ const router = createBrowserRouter([
           { path: "/projects/:id", element: <ProjectDetailPage /> },
           { path: "/anomalies", element: <AnomaliesPage /> },
           { path: "/rules", element: <RulesPage /> },
+          { path: "/users", element: <UsersPage /> },
         ],
       },
     ],
