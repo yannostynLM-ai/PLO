@@ -817,33 +817,46 @@ Exemples : `delivery.completed`, `stock.shortage`, `installation.issue`
 
 ---
 
-## 9. Questions ouvertes (à trancher avant Sprint 1)
+## 9. Décisions d'architecture (Questions ouvertes — tranchées le 26/02/2026)
 
-1. **Identifiant projet unifié** : comment marier le numéro de commande ERP, le panier e-commerce et l'ID devis magasin en un seul `project_id` ? Faut-il une table de mapping cross-références `ProjectExternalRef(project_id, source, ref)` ?
+1. **Identifiant projet unifié** ✅
+   Mapping automatique sur `customer_id + période` : le PLO tente de rattacher automatiquement une commande ERP au projet en cours du même client sur la même période. La table `ProjectExternalRef(project_id, source, ref)` sert de registre de correspondance. Si aucun projet correspondant n'est trouvé → dead letter queue + alerte ops pour rattachement manuel.
 
-2. **Rattachement Order → Project** : qui crée le lien entre une commande ERP et son projet PLO ? Est-ce l'opérateur en magasin, une règle automatique (même client + même période), ou un ID projet explicitement transmis par l'ERP ?
+2. **Rattachement Order → Project** ✅
+   Double mode : création automatique sur `order.confirmed` avec `project_ref` connu **ET** pré-création manuelle possible depuis l'interface opérateur (cas de devis non encore passés en commande ou d'intégration ERP partielle).
 
-3. **Création d'Order dans le PLO** : les Orders sont-elles créées dans le PLO à partir d'un événement ERP (`order.confirmed`), ou faut-il permettre la pré-création manuelle (devis non encore passé en commande) ?
+3. **Création d'Order dans le PLO** ✅
+   Voir Q2 — automatique sur `order.confirmed` est le chemin nominal, la pré-création manuelle est le chemin de secours.
 
-4. **Stock check au niveau Order ou OrderLine** : la vérification de stock remonte-t-elle par SKU (niveau ligne) ou globalement par commande ? L'anomalie `stock.shortage` doit-elle identifier les SKUs concernés dans le payload ?
+4. **Stock check** ✅
+   Au niveau `OrderLine` par SKU. Le payload `stock.shortage` doit identifier les SKUs en rupture. L'anomalie ANO-01 affiche les références produit concernées dans l'alerte coordinateur et acheteur.
 
-5. **Périmètre auth v1** : SSO entreprise dès le départ ou auth simple (login/mot de passe) ?
+5. **Périmètre auth** ✅ *(tranché en Sprint 9)*
+   JWT httpOnly cookie, architecture SSO-ready. Auth email/mot de passe opérateur en v1, point de remplacement OIDC/SAML prêt dans `jwtAuthPlugin`.
 
-6. **Hébergement** : cloud public (AWS/Azure/GCP), cloud privé ou on-premise ?
+6. **Hébergement** ✅
+   Cloud public (AWS / Azure / GCP). PostgreSQL managé (RDS / Cloud SQL), Redis managé (ElastiCache / MemoryStore), conteneurs Docker (ECS / App Service / Cloud Run). Architecture stateless facilite le scale-out.
 
-7. **Notifications client** : qui déclenche l'email/SMS client — le PLO directement, ou le PLO via le CRM ? Si via CRM, le PLO crée un ticket et le CRM envoie le message.
+7. **Notifications client** ✅
+   Via le CRM : le PLO crée un ticket CRM (déjà implémenté) et le CRM gère l'envoi email/SMS client avec ses propres templates et historique contacts. Le PLO ne gère pas le référentiel emails/téléphones clients.
 
-8. **Seuils des règles d'anomalie** : les délais (72h, 48h, J-5...) sont-ils fixes ou configurables par magasin / type de projet / type de commande ?
+8. **Seuils des règles d'anomalie** ✅
+   Configurables par magasin ET par type de projet. Le champ JSONB `condition` de `AnomalyRule` stocke les seuils. Une table de surcharges `RuleOverride(rule_id, store_id?, project_type?, condition_overrides JSONB)` permet la customisation par contexte — le moteur applique la surcharge la plus spécifique disponible.
 
-9. **Vue client** : y a-t-il un portail de suivi côté client (tracking public), ou la communication est-elle uniquement push (email/SMS) ?
+9. **Vue client** ✅ *(tranché en Sprint 7)*
+   Portail de suivi public `/suivi/:token` — milestone stepper, aucune donnée interne exposée.
 
-10. **Clôture projet vs clôture commande** : un projet est-il clôturé automatiquement quand toutes ses commandes sont closed, ou faut-il une validation manuelle au niveau projet ?
+10. **Clôture projet** ✅
+    Mixte : automatique si les conditions sont remplies (sans installation : `lastmile.delivered` ; avec installation : `lastmile.delivered` + `installation.closed`), mais l'opérateur peut toujours forcer la clôture manuelle depuis la fiche projet.
 
-11. **Accord livraison partielle** : le consentement client + installateur est-il capturé dans le PLO (saisie manuelle customer care) ou poussé par un système externe (CRM, OMS) ?
+11. **Accord livraison partielle** ✅
+    Double canal : saisie manuelle dans le PLO (bouton "Valider livraison partielle" — customer care confirme l'accord client ET installateur, audit log automatique) **ET** acceptation de l'événement externe `consolidation.partial_approved` poussé par l'OMS/CRM. Les deux chemins mènent au même état `Consolidation.partial_delivery_approved = true`.
 
-12. **Communication proactive client** : à chaque recalcul de `estimated_complete_date`, le PLO envoie-t-il automatiquement un email/SMS, ou soumet-il une proposition au customer care qui valide avant envoi ?
+12. **Communication proactive client** ✅
+    Proposition soumise au customer care : le PLO détecte le glissement d'ETA et crée une alerte interne + ticket CRM "à valider". Le customer care valide le message avant envoi client. Évite les communications automatiques sur fausse alerte OMS.
 
-13. **Référentiel delivery stations** : les stations sont-elles connues à l'avance (table de référence) ou créées dynamiquement depuis les payloads OMS ?
+13. **Référentiel delivery stations** ✅
+    Créées dynamiquement depuis les payloads OMS. Le PLO enregistre automatiquement chaque `station_id` / `station_name` reçu — pas de table de référence à pré-alimenter.
 
 ---
 
@@ -923,7 +936,14 @@ Exemples : `delivery.completed`, `stock.shortage`, `installation.issue`
 - Monitoring / observabilité (logs structurés, métriques BullMQ, alertes infra)
 - Documentation API OpenAPI/Swagger auto-générée
 
-**Questions ouvertes non tranchées** : n° 1, 2, 3, 4, 6, 7, 8, 10, 11, 12, 13 de la section 9
+**Sprints à planifier issus des décisions d'architecture (section 9)**
+- Mapping auto `customer_id + période` pour rattachement Order → Project (Q1/Q2/Q3)
+- Payload `stock.shortage` enrichi avec SKUs manquants (Q4)
+- Table `RuleOverride` + UI admin surcharges par magasin/type projet (Q8)
+- Clôture projet automatique sur conditions métier (Q10)
+- Bouton "Valider livraison partielle" dans fiche projet (Q11)
+- Infra cloud (AWS/Azure/GCP) — pipeline CI/CD Docker (Q6)
+- Intégration CRM réelle pour notifications client (Q7/Q12)
 
 ---
 
