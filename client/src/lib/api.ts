@@ -15,6 +15,7 @@ export interface ProjectSummary {
   status: string;
   channel_origin: string;
   store_id: string | null;
+  assigned_to: string | null;   // Sprint 18
   created_at: string;
   updated_at: string;
   anomaly_severity: Severity;
@@ -62,6 +63,7 @@ export interface ProjectDetail {
   status: string;
   channel_origin: string;
   store_id: string | null;
+  assigned_to: string | null;   // Sprint 18
   created_at: string;
   updated_at: string;
   tracking_token: string | null;
@@ -228,6 +230,7 @@ export interface ProjectFilters {
   severity?: string;
   type?: string;
   store?: string;
+  assignee?: string;   // Sprint 18
 }
 
 export function useProjects(filters?: ProjectFilters) {
@@ -237,6 +240,7 @@ export function useProjects(filters?: ProjectFilters) {
   if (filters?.severity) params.set("severity", filters.severity);
   if (filters?.type)     params.set("type",     filters.type);
   if (filters?.store)    params.set("store",    filters.store);
+  if (filters?.assignee) params.set("assignee", filters.assignee);
   const qs = params.toString() ? `?${params.toString()}` : "";
 
   return useQuery({
@@ -601,8 +605,8 @@ export function useCreateProject() {
 export function useUpdateProject() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...body }: { id: string; status?: string; store_id?: string | null }) =>
-      apiFetch<{ project: { id: string; status: string; store_id: string | null } }>(
+    mutationFn: ({ id, ...body }: { id: string; status?: string; store_id?: string | null; assigned_to?: string | null }) =>
+      apiFetch<{ project: { id: string; status: string; store_id: string | null; assigned_to: string | null } }>(
         `/api/projects/${id}`,
         { method: "PATCH", body: JSON.stringify(body) }
       ),
@@ -713,5 +717,22 @@ export function useActivity(filters?: ActivityFilters) {
     queryKey: ["activity", filters ?? {}],
     queryFn:  () => apiFetch<{ entries: ActivityEntry[]; total: number }>(`/api/activity${qs}`),
     refetchInterval: 30_000,
+  });
+}
+
+// =============================================================================
+// Sprint 18 — Users directory (accessible à tous les rôles authentifiés)
+// =============================================================================
+
+export interface UserDirectory {
+  id:   string;
+  name: string;
+}
+
+export function useUsersDirectory() {
+  return useQuery<{ users: UserDirectory[] }>({
+    queryKey: ["users-directory"],
+    queryFn:  () => apiFetch<{ users: UserDirectory[] }>("/api/users/directory"),
+    staleTime: 60_000,
   });
 }

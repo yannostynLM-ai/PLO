@@ -166,6 +166,7 @@ model Project {
   metadata       Json?
 
   tracking_token String?  @unique  // Sprint 7 : token URL de suivi client
+  assigned_to    String?           // Sprint 18 : opérateur responsable (nom, pas FK)
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

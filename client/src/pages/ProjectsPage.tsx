@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useProjects, useCreateProject, downloadCsv } from "../lib/api.ts";
+import { useProjects, useCreateProject, useCurrentUser, downloadCsv } from "../lib/api.ts";
 import type { ProjectFilters } from "../lib/api.ts";
 import SeverityBadge from "../components/SeverityBadge.tsx";
 import {
@@ -8,7 +8,7 @@ import {
   projectStatusLabel,
   projectTypeLabel,
 } from "../lib/utils.ts";
-import { RefreshCw, X, Download, Plus } from "lucide-react";
+import { RefreshCw, X, Download, Plus, UserCheck } from "lucide-react";
 
 // =============================================================================
 // ProjectFormModal — création de projet
@@ -176,8 +176,11 @@ function ProjectFormModal({ onClose }: ProjectFormModalProps) {
 
 export default function ProjectsPage() {
   const navigate = useNavigate();
+  const { data: authData } = useCurrentUser();
   const [filters, setFilters] = useState<ProjectFilters>({});
   const [rawQ, setRawQ] = useState("");
+  const [rawStore, setRawStore] = useState("");
+  const [myProjects, setMyProjects] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
 
   // Debounce 300ms sur la recherche texte
@@ -193,10 +196,37 @@ export default function ProjectsPage() {
     return () => clearTimeout(t);
   }, [rawQ]);
 
+  // Debounce 300ms sur le filtre magasin
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setFilters((prev) => {
+        const next = { ...prev };
+        if (rawStore) next.store = rawStore;
+        else delete next.store;
+        return next;
+      });
+    }, 300);
+    return () => clearTimeout(t);
+  }, [rawStore]);
+
+  const toggleMyProjects = () => {
+    const next = !myProjects;
+    setMyProjects(next);
+    setFilters((prev) => {
+      const updated = { ...prev };
+      if (next && authData?.user?.name) {
+        updated.assignee = authData.user.name;
+      } else {
+        delete updated.assignee;
+      }
+      return updated;
+    });
+  };
+
   const { data, isLoading, error, refetch, isFetching } = useProjects(filters);
   const projects = data?.projects ?? [];
 
-  const hasFilters = rawQ !== "" || Object.keys(filters).length > 0;
+  const hasFilters = rawQ !== "" || rawStore !== "" || myProjects || Object.keys(filters).length > 0;
 
   const [isExporting, setIsExporting] = useState(false);
   const handleExport = async () => {
@@ -208,6 +238,7 @@ export default function ProjectsPage() {
       if (filters.severity) params.set("severity", filters.severity);
       if (filters.type)     params.set("type",     filters.type);
       if (filters.store)    params.set("store",    filters.store);
+      if (filters.assignee) params.set("assignee", filters.assignee);
       const qs = params.toString() ? `?${params.toString()}` : "";
       await downloadCsv(
         `/api/projects/export.csv${qs}`,
@@ -221,6 +252,8 @@ export default function ProjectsPage() {
   const resetFilters = () => {
     setFilters({});
     setRawQ("");
+    setRawStore("");
+    setMyProjects(false);
   };
 
   const setSeverity = (s: string | undefined) => {
@@ -307,6 +340,30 @@ export default function ProjectsPage() {
           className="text-sm border border-slate-200 rounded px-3 py-1.5 w-48 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
         />
 
+        {/* Magasin */}
+        <input
+          type="text"
+          value={rawStore}
+          onChange={(e) => setRawStore(e.target.value)}
+          placeholder="Magasin…"
+          className="text-sm border border-slate-200 rounded px-3 py-1.5 w-32 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+        />
+
+        {/* Mes projets */}
+        {authData?.user && (
+          <button
+            onClick={toggleMyProjects}
+            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+              myProjects
+                ? "bg-blue-600 text-white border-blue-600"
+                : "border-slate-200 text-slate-600 hover:border-slate-400"
+            }`}
+          >
+            <UserCheck className="h-3.5 w-3.5" />
+            Mes projets
+          </button>
+        )}
+
         {/* Type de projet */}
         <select
           value={filters.type ?? ""}
@@ -374,6 +431,7 @@ export default function ProjectsPage() {
                 <th className="text-left px-4 py-3 font-medium text-slate-600">Client</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-600">Type</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-600">Statut</th>
+                <th className="text-left px-4 py-3 font-medium text-slate-600">Responsable</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-600">Sévérité</th>
                 <th className="text-right px-4 py-3 font-medium text-slate-600">Anomalies</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-600">Dernier événement</th>
@@ -403,6 +461,16 @@ export default function ProjectsPage() {
                     <span className="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-600">
                       {projectStatusLabel(project.status)}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {project.assigned_to ? (
+                      <span className="flex items-center gap-1 text-xs text-slate-600">
+                        <UserCheck className="h-3 w-3 text-blue-400 flex-shrink-0" />
+                        {project.assigned_to}
+                      </span>
+                    ) : (
+                      <span className="text-slate-300">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <SeverityBadge severity={project.anomaly_severity} size="sm" />

@@ -24,8 +24,9 @@ const CreateProjectSchema = z.object({
 });
 
 const PatchProjectSchema = z.object({
-  status:   z.enum(["draft", "active", "on_hold", "completed", "cancelled"]).optional(),
-  store_id: z.string().nullable().optional(),
+  status:      z.enum(["draft", "active", "on_hold", "completed", "cancelled"]).optional(),
+  store_id:    z.string().nullable().optional(),
+  assigned_to: z.string().nullable().optional(),   // Sprint 18
 });
 
 const CreateNoteSchema = z.object({
@@ -53,6 +54,7 @@ const ProjectsQuerySchema = z.object({
   severity: z.enum(["ok", "warning", "critical"]).optional(),
   type:     z.string().optional(),
   store:    z.string().optional(),
+  assignee: z.string().optional(),   // Sprint 18
 });
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -105,13 +107,14 @@ export const projectsRoute: FastifyPluginAsync = async (fastify) => {
         message: parseResult.error.issues[0]?.message ?? "Invalid query params",
       });
     }
-    const { q, status, severity, type, store } = parseResult.data;
+    const { q, status, severity, type, store, assignee } = parseResult.data;
 
     const where = {
-      ...(q      ? { customer_id:  { contains: q,     mode: "insensitive" as const } } : {}),
-      ...(status ? { status:       status as ProjectStatus  } : {}),
-      ...(type   ? { project_type: type   as ProjectType    } : {}),
-      ...(store  ? { store_id:     { contains: store, mode: "insensitive" as const } } : {}),
+      ...(q        ? { customer_id:  { contains: q,       mode: "insensitive" as const } } : {}),
+      ...(status   ? { status:       status as ProjectStatus  } : {}),
+      ...(type     ? { project_type: type   as ProjectType    } : {}),
+      ...(store    ? { store_id:     { contains: store,   mode: "insensitive" as const } } : {}),
+      ...(assignee ? { assigned_to:  { contains: assignee, mode: "insensitive" as const } } : {}),
     };
 
     const since = sevenDaysAgo();
@@ -165,6 +168,7 @@ export const projectsRoute: FastifyPluginAsync = async (fastify) => {
         status: project.status,
         channel_origin: project.channel_origin,
         store_id: project.store_id,
+        assigned_to: project.assigned_to,   // Sprint 18
         created_at: project.created_at,
         updated_at: project.updated_at,
         anomaly_severity,
@@ -211,13 +215,14 @@ export const projectsRoute: FastifyPluginAsync = async (fastify) => {
         message: parseResult.error.issues[0]?.message ?? "Invalid query params",
       });
     }
-    const { q, status, severity, type, store } = parseResult.data;
+    const { q, status, severity, type, store, assignee } = parseResult.data;
 
     const where = {
-      ...(q      ? { customer_id:  { contains: q,     mode: "insensitive" as const } } : {}),
-      ...(status ? { status:       status as ProjectStatus  } : {}),
-      ...(type   ? { project_type: type   as ProjectType    } : {}),
-      ...(store  ? { store_id:     { contains: store, mode: "insensitive" as const } } : {}),
+      ...(q        ? { customer_id:  { contains: q,       mode: "insensitive" as const } } : {}),
+      ...(status   ? { status:       status as ProjectStatus  } : {}),
+      ...(type     ? { project_type: type   as ProjectType    } : {}),
+      ...(store    ? { store_id:     { contains: store,   mode: "insensitive" as const } } : {}),
+      ...(assignee ? { assigned_to:  { contains: assignee, mode: "insensitive" as const } } : {}),
     };
 
     const since = sevenDaysAgo();
@@ -253,6 +258,7 @@ export const projectsRoute: FastifyPluginAsync = async (fastify) => {
         status: project.status,
         channel_origin: project.channel_origin,
         store_id: project.store_id,
+        assigned_to: project.assigned_to,   // Sprint 18
         created_at: project.created_at,
         anomaly_severity,
         active_anomaly_count: unacked.length,
@@ -263,12 +269,13 @@ export const projectsRoute: FastifyPluginAsync = async (fastify) => {
     const filtered = severity ? result.filter((p) => p.anomaly_severity === severity) : result;
 
     const header = toCsvRow([
-      "Client", "Type", "Statut", "Canal", "Magasin",
+      "Client", "Type", "Statut", "Canal", "Magasin", "Responsable",
       "Sévérité", "Anomalies actives", "Dernier événement", "Créé le",
     ]);
     const rows = filtered.map((p) =>
       toCsvRow([
         p.customer_id, p.project_type, p.status, p.channel_origin, p.store_id ?? "",
+        p.assigned_to ?? "",
         p.anomaly_severity, p.active_anomaly_count,
         p.last_event_at?.toISOString() ?? "",
         p.created_at.toISOString(),
@@ -304,7 +311,7 @@ export const projectsRoute: FastifyPluginAsync = async (fastify) => {
 
       const existing = await prisma.project.findUnique({
         where: { id },
-        select: { id: true, status: true, customer_id: true },
+        select: { id: true, status: true, customer_id: true, assigned_to: true },
       });
       if (!existing) {
         return reply.code(404).send({
@@ -317,7 +324,7 @@ export const projectsRoute: FastifyPluginAsync = async (fastify) => {
       const project = await prisma.project.update({
         where: { id },
         data: parsed.data,
-        select: { id: true, status: true, store_id: true, updated_at: true },
+        select: { id: true, status: true, store_id: true, assigned_to: true, updated_at: true },
       });
 
       if (parsed.data.status && parsed.data.status !== existing.status) {
@@ -328,6 +335,17 @@ export const projectsRoute: FastifyPluginAsync = async (fastify) => {
           entity_label:  existing.customer_id,
           operator_name: request.jwtUser.name,
           details:       { from: existing.status, to: parsed.data.status },
+        });
+      }
+
+      if (parsed.data.assigned_to !== undefined && parsed.data.assigned_to !== existing.assigned_to) {
+        logActivity({
+          action:        "project_assigned",
+          entity_type:   "project",
+          entity_id:     id,
+          entity_label:  existing.customer_id,
+          operator_name: request.jwtUser.name,
+          details:       { from: existing.assigned_to ?? null, to: parsed.data.assigned_to ?? null },
         });
       }
 

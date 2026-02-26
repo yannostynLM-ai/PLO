@@ -41,6 +41,19 @@ const userSelect = {
 } as const;
 
 export const usersRoute: FastifyPluginAsync = async (fastify) => {
+  // --------------------------------------------------------------------------
+  // GET /api/users/directory — accessible à tous les rôles authentifiés
+  // Retourne uniquement { id, name } sans données sensibles (Sprint 18)
+  // DOIT être déclaré AVANT le addHook admin
+  // --------------------------------------------------------------------------
+  fastify.get("/api/users/directory", async (_req, reply) => {
+    const users = await prisma.user.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    });
+    return reply.send({ users });
+  });
+
   // ── Guard admin ──────────────────────────────────────────────────────────
   fastify.addHook("onRequest", async (request, reply) => {
     if (request.jwtUser?.role !== "admin") {

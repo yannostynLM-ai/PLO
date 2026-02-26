@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useProject, useRiskAnalysis, useUpdateProject, useAddProjectNote, useCurrentUser } from "../lib/api.ts";
+import { useProject, useRiskAnalysis, useUpdateProject, useAddProjectNote, useCurrentUser, useUsersDirectory } from "../lib/api.ts";
 import type { StepDetail, OrderDetail } from "../lib/api.ts";
 import ProjectTimeline from "../components/ProjectTimeline.tsx";
 import ProjectGantt from "../components/ProjectGantt.tsx";
@@ -10,7 +10,7 @@ import {
   projectStatusLabel,
   projectTypeLabel,
 } from "../lib/utils.ts";
-import { ArrowLeft, RefreshCw, Copy, Check, Brain, AlertTriangle, Loader2, ChevronDown, StickyNote } from "lucide-react";
+import { ArrowLeft, RefreshCw, Copy, Check, Brain, AlertTriangle, Loader2, ChevronDown, StickyNote, UserCheck } from "lucide-react";
 import { useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -240,6 +240,10 @@ export default function ProjectDetailPage() {
   const [editStatus, setEditStatus] = useState(false);
   const updateProject = useUpdateProject();
 
+  // Sprint 18 — assignee editor
+  const [editAssignee, setEditAssignee] = useState(false);
+  const { data: dirData } = useUsersDirectory();
+
   // Sprint 15 — notes
   const addNote = useAddProjectNote();
   const { data: authData } = useCurrentUser();
@@ -339,6 +343,47 @@ export default function ProjectDetailPage() {
                     <dd className="font-medium">{project.store_id}</dd>
                   </div>
                 )}
+                <div className="flex justify-between items-center">
+                  <dt className="text-slate-500">Responsable</dt>
+                  <dd>
+                    {editAssignee ? (
+                      <select
+                        defaultValue={project.assigned_to ?? ""}
+                        autoFocus
+                        onBlur={(e) => {
+                          void updateProject.mutateAsync({ id: project.id, assigned_to: e.target.value || null });
+                          setEditAssignee(false);
+                        }}
+                        onChange={(e) => {
+                          void updateProject.mutateAsync({ id: project.id, assigned_to: e.target.value || null });
+                          setEditAssignee(false);
+                        }}
+                        className="text-xs border border-blue-300 rounded px-2 py-0.5 focus:outline-none focus:border-blue-400 max-w-[140px]"
+                      >
+                        <option value="">— Non assigné —</option>
+                        {(dirData?.users ?? []).map((u) => (
+                          <option key={u.id} value={u.name}>{u.name}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <button
+                        onClick={() => setEditAssignee(true)}
+                        title="Modifier le responsable"
+                        className="flex items-center gap-1 text-xs text-slate-600 hover:text-blue-600 transition-colors"
+                      >
+                        {project.assigned_to ? (
+                          <>
+                            <UserCheck className="h-3 w-3 text-blue-400" />
+                            <span className="font-medium">{project.assigned_to}</span>
+                          </>
+                        ) : (
+                          <span className="text-slate-300 italic">Non assigné</span>
+                        )}
+                        <ChevronDown className="h-3 w-3 opacity-40 ml-0.5" />
+                      </button>
+                    )}
+                  </dd>
+                </div>
                 <div className="flex justify-between">
                   <dt className="text-slate-500">Créé le</dt>
                   <dd className="text-xs">{formatDateShort(project.created_at)}</dd>

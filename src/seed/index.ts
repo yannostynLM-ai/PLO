@@ -176,6 +176,7 @@ async function main() {
       project_type: "kitchen",
       status: "active",
       tracking_token: "dubois-2024-suivi",  // Sprint 7 — token URL de suivi client
+      assigned_to: "Admin PLO",             // Sprint 18 — assigné au seul user seedé
       metadata: {
         project_name: "Cuisine Famille Dubois",
         contact_email: "jean.dubois@email.fr",
