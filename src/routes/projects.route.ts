@@ -7,12 +7,13 @@ import { logActivity } from "../lib/activity.js";
 
 // =============================================================================
 // Routes — Projets (Sprint 15 : PATCH + notes ajoutés)
-// POST   /api/projects             — créer un projet
-// GET    /api/projects             — liste avec sévérité anomalie calculée
-// GET    /api/projects/export.csv  — export CSV (mêmes filtres)
-// PATCH  /api/projects/:id         — mise à jour statut / magasin
-// POST   /api/projects/:id/notes   — ajouter une note opérateur
-// GET    /api/projects/:id         — détail complet (inclut notes)
+// POST   /api/projects                               — créer un projet
+// GET    /api/projects                               — liste avec sévérité anomalie calculée
+// GET    /api/projects/export.csv                   — export CSV (mêmes filtres)
+// PATCH  /api/projects/:id                          — mise à jour statut / magasin
+// POST   /api/projects/:id/notes                    — ajouter une note opérateur
+// POST   /api/projects/:id/partial-delivery-approval — valider livraison partielle (Sprint 20)
+// GET    /api/projects/:id                          — détail complet (inclut notes)
 // =============================================================================
 
 const CreateProjectSchema = z.object({
@@ -32,6 +33,11 @@ const PatchProjectSchema = z.object({
 const CreateNoteSchema = z.object({
   content:     z.string().min(1, "content requis"),
   author_name: z.string().min(1, "author_name requis"),
+});
+
+const PartialDeliveryApprovalSchema = z.object({
+  approved_by: z.string().min(1, "approved_by requis"),
+  notes:       z.string().optional(),
 });
 
 // Helper CSV — échappe les virgules et guillemets
@@ -405,6 +411,86 @@ export const projectsRoute: FastifyPluginAsync = async (fastify) => {
       });
 
       return reply.code(201).send({ note });
+    }
+  );
+
+  // --------------------------------------------------------------------------
+  // POST /api/projects/:id/partial-delivery-approval  (Sprint 20 — Q11)
+  // Double canal : UI opérateur + événement OMS externe (déjà géré via entity.service)
+  // --------------------------------------------------------------------------
+  fastify.post<{ Params: { id: string } }>(
+    "/api/projects/:id/partial-delivery-approval",
+    async (request, reply) => {
+      const { id } = request.params;
+
+      const parsed = PartialDeliveryApprovalSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.code(422).send({
+          statusCode: 422,
+          error: "Unprocessable Entity",
+          message: parsed.error.issues[0]?.message ?? "Payload invalide",
+          details: parsed.error.flatten(),
+        });
+      }
+
+      const { approved_by, notes } = parsed.data;
+
+      const [project, consolidation] = await Promise.all([
+        prisma.project.findUnique({ where: { id }, select: { customer_id: true } }),
+        prisma.consolidation.findUnique({ where: { project_id: id } }),
+      ]);
+
+      if (!project) {
+        return reply.code(404).send({
+          statusCode: 404,
+          error: "Not Found",
+          message: "Projet introuvable",
+        });
+      }
+      if (!consolidation) {
+        return reply.code(404).send({
+          statusCode: 404,
+          error: "Not Found",
+          message: "Aucune consolidation pour ce projet",
+        });
+      }
+      if (consolidation.partial_delivery_approved) {
+        return reply.code(409).send({
+          statusCode: 409,
+          error: "Conflict",
+          message: "Livraison partielle déjà approuvée",
+        });
+      }
+
+      const updated = await prisma.consolidation.update({
+        where: { id: consolidation.id },
+        data: {
+          status:                    "partial_approved",
+          partial_delivery_approved: true,
+          partial_approved_by: {
+            customer:             true,
+            installer:            true,
+            approved_at:          new Date().toISOString(),
+            approved_by_operator: approved_by,
+            ...(notes ? { notes } : {}),
+          },
+          updated_at: new Date(),
+        },
+      });
+
+      logActivity({
+        action:        "partial_delivery_approved",
+        entity_type:   "project",
+        entity_id:     id,
+        entity_label:  project.customer_id,
+        operator_name: approved_by,
+      });
+
+      return reply.send({
+        approved:        true,
+        consolidation_id: updated.id,
+        approved_by,
+      });
     }
   );
 

@@ -7,7 +7,8 @@ interface Ano01Data {
   customerId: string;
   orderId: string | null;
   erpRef: string | null;
-  sku: string;
+  skus: string[];       // Sprint 20 — liste de SKUs manquants
+  sku: string;          // rétro-compat (1er SKU, utilisé dans le subject)
   skuLabel?: string;
   promisedDeliveryDate: Date | null;
   hoursRemaining: number;
@@ -48,8 +49,13 @@ export function ano01Html(data: Ano01Data): string {
         <td style="padding: 8px 12px;">${data.erpRef ?? data.orderId ?? "—"}</td>
       </tr>
       <tr style="background: #f3f4f6;">
-        <td style="padding: 8px 12px; font-weight: bold;">Produit manquant (SKU)</td>
-        <td style="padding: 8px 12px; color: #dc2626; font-weight: bold;">${data.sku}${data.skuLabel ? ` — ${data.skuLabel}` : ""}</td>
+        <td style="padding: 8px 12px; font-weight: bold;">
+          Produit${data.skus.length > 1 ? "s manquants" : " manquant"} (${data.skus.length > 1 ? `${data.skus.length} SKUs` : "SKU"})
+        </td>
+        <td style="padding: 8px 12px; color: #dc2626; font-weight: bold;">
+          ${data.skus.map((s) => `<div>${s}</div>`).join("")}
+          ${data.skuLabel && data.skus.length === 1 ? `<div style="font-weight:normal;font-size:11px;color:#6b7280;">${data.skuLabel}</div>` : ""}
+        </td>
       </tr>
       <tr>
         <td style="padding: 8px 12px; font-weight: bold;">Date de livraison promise</td>

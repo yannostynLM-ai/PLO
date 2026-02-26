@@ -12,7 +12,8 @@ const ACTION_LABELS: Record<string, string> = {
   project_status_changed:    "Statut modifié",
   project_note_added:        "Note ajoutée",
   project_created:           "Projet créé",
-  project_assigned:          "Attribution",   // Sprint 18
+  project_assigned:              "Attribution",         // Sprint 18
+  partial_delivery_approved:     "Livr. partielle",    // Sprint 20
   rule_created:              "Règle créée",
   rule_updated:              "Règle modifiée",
   rule_deleted:              "Règle supprimée",
@@ -26,7 +27,8 @@ const ACTION_BADGE: Record<string, string> = {
   project_status_changed:    "bg-blue-100 text-blue-800",
   project_note_added:        "bg-slate-100 text-slate-700",
   project_created:           "bg-green-100 text-green-800",
-  project_assigned:          "bg-blue-100 text-blue-800",   // Sprint 18
+  project_assigned:              "bg-blue-100 text-blue-800",    // Sprint 18
+  partial_delivery_approved:     "bg-amber-100 text-amber-700", // Sprint 20
   rule_created:              "bg-green-100 text-green-800",
   rule_updated:              "bg-blue-100 text-blue-800",
   rule_deleted:              "bg-orange-100 text-orange-800",

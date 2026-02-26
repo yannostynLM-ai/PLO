@@ -83,6 +83,7 @@ export interface ProjectDetail {
     estimated_complete_date: string | null;
     orders_required: string[];
     orders_arrived: string[];
+    partial_delivery_approved: boolean;  // Sprint 20
   } | null;
   last_mile: {
     id: string;
@@ -750,5 +751,23 @@ export function useUsersDirectory() {
     queryKey: ["users-directory"],
     queryFn:  () => apiFetch<{ users: UserDirectory[] }>("/api/users/directory"),
     staleTime: 60_000,
+  });
+}
+
+// =============================================================================
+// Sprint 20 — Partial delivery approval
+// =============================================================================
+
+export function usePartialDeliveryApproval() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, approved_by, notes }: { id: string; approved_by: string; notes?: string }) =>
+      apiFetch<{ approved: boolean; consolidation_id: string; approved_by: string }>(
+        `/api/projects/${id}/partial-delivery-approval`,
+        { method: "POST", body: JSON.stringify({ approved_by, notes }) }
+      ),
+    onSuccess: (_, { id }) => {
+      void qc.invalidateQueries({ queryKey: ["project", id] });
+    },
   });
 }

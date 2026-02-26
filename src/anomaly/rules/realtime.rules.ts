@@ -68,7 +68,12 @@ const ano01: RealtimeRule = {
     if (hoursRemaining > 72) return null;
 
     const payload = ctx.event.payload as Record<string, unknown> | null;
-    const sku = (payload?.["sku"] as string) ?? "inconnu";
+    // Sprint 20 — multi-SKU
+    const rawSkus = Array.isArray(payload?.["shortage_skus"])
+      ? (payload["shortage_skus"] as string[]).filter(Boolean)
+      : [];
+    const singleSku = (payload?.["sku"] as string) ?? null;
+    const skus = rawSkus.length > 0 ? rawSkus : singleSku ? [singleSku] : ["inconnu"];
     const skuLabel = payload?.["label"] as string | undefined;
 
     const data = {
@@ -76,7 +81,8 @@ const ano01: RealtimeRule = {
       customerId: ctx.project.customer_id,
       orderId: order.id,
       erpRef: order.erp_order_ref ?? null,
-      sku,
+      skus,
+      sku: skus[0] ?? "inconnu",   // rétro-compat subject email
       skuLabel,
       promisedDeliveryDate: order.promised_delivery_date,
       hoursRemaining,

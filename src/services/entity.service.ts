@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
+import { logActivity } from "../lib/activity.js";
 
 // Cast utilitaire pour les champs Json de Prisma
 function toJson(v: unknown): Prisma.InputJsonValue {
@@ -124,13 +125,17 @@ export async function handleStockShortage(
   orderId: string | null,
   payload: Payload
 ): Promise<void> {
-  const sku = str(payload["sku"]);
-  if (!sku) return;
+  // Sprint 20 — supporte shortage_skus[] (multi-SKU) + sku single (rétro-compat)
+  const rawSkus = Array.isArray(payload["shortage_skus"])
+    ? (payload["shortage_skus"] as string[]).filter(Boolean)
+    : [];
+  const singleSku = str(payload["sku"]);
+  const skus = rawSkus.length > 0 ? rawSkus : singleSku ? [singleSku] : [];
+  if (skus.length === 0) return;
 
-  // Cherche les OrderLines correspondant au SKU pour ce projet
   const where = orderId
-    ? { order_id: orderId, sku }
-    : { order: { project_id: projectId }, sku };
+    ? { order_id: orderId,              sku: { in: skus } }
+    : { order: { project_id: projectId }, sku: { in: skus } };
 
   await prisma.orderLine.updateMany({
     where,
@@ -373,6 +378,44 @@ export async function handleLastmileDelivered(
 }
 
 // -----------------------------------------------------------------------------
+// Sprint 20 — Q10 : clôture automatique de projet
+// Appelée après lastmile.delivered et installation.completed
+// -----------------------------------------------------------------------------
+async function maybeAutoCloseProject(projectId: string): Promise<void> {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    include: { last_mile: true, installation: true },
+  });
+  if (!project) return;
+  if (project.status === "completed" || project.status === "cancelled") return;
+
+  const lastMileDone =
+    project.last_mile?.status === "delivered" ||
+    project.last_mile?.status === "partial_delivered";
+  if (!lastMileDone) return;
+
+  const installationDone =
+    !project.installation ||
+    project.installation.status === "completed" ||
+    project.installation.status === "cancelled";
+
+  if (installationDone) {
+    await prisma.project.update({
+      where: { id: projectId },
+      data: { status: "completed", updated_at: new Date() },
+    });
+    logActivity({
+      action:        "project_status_changed",
+      entity_type:   "project",
+      entity_id:     projectId,
+      entity_label:  project.customer_id,
+      operator_name: "system",
+      details:       { from: project.status, to: "completed", trigger: "auto" },
+    });
+  }
+}
+
+// -----------------------------------------------------------------------------
 // Dispatcher principal — appelé par le worker
 // -----------------------------------------------------------------------------
 export async function applyEntityUpdates(params: {
@@ -427,6 +470,15 @@ export async function applyEntityUpdates(params: {
     case "lastmile.partial_delivered":
     case "lastmile.failed":
       await handleLastmileDelivered(project_id, event_type, payload);
+      // Q10 — clôture auto si lastmile livré
+      if (event_type === "lastmile.delivered" || event_type === "lastmile.partial_delivered") {
+        await maybeAutoCloseProject(project_id);
+      }
+      break;
+
+    case "installation.completed":
+      // Q10 — clôture auto si lastmile déjà livré
+      await maybeAutoCloseProject(project_id);
       break;
 
     default:

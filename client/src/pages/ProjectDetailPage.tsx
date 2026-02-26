@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useProject, useRiskAnalysis, useUpdateProject, useAddProjectNote, useCurrentUser, useUsersDirectory } from "../lib/api.ts";
+import { useProject, useRiskAnalysis, useUpdateProject, useAddProjectNote, useCurrentUser, useUsersDirectory, usePartialDeliveryApproval } from "../lib/api.ts";
 import type { StepDetail, OrderDetail } from "../lib/api.ts";
 import ProjectTimeline from "../components/ProjectTimeline.tsx";
 import ProjectGantt from "../components/ProjectGantt.tsx";
@@ -10,7 +10,7 @@ import {
   projectStatusLabel,
   projectTypeLabel,
 } from "../lib/utils.ts";
-import { ArrowLeft, RefreshCw, Copy, Check, Brain, AlertTriangle, Loader2, ChevronDown, StickyNote, UserCheck } from "lucide-react";
+import { ArrowLeft, RefreshCw, Copy, Check, Brain, AlertTriangle, Loader2, ChevronDown, StickyNote, UserCheck, CheckCircle } from "lucide-react";
 import { useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -250,6 +250,11 @@ export default function ProjectDetailPage() {
   const [noteText, setNoteText] = useState("");
   const [isAddingNote, setIsAddingNote] = useState(false);
 
+  // Sprint 20 — partial delivery approval
+  const partialDeliveryApproval = usePartialDeliveryApproval();
+  const [showPartialApproval, setShowPartialApproval] = useState(false);
+  const [partialApprovedBy, setPartialApprovedBy] = useState("");
+
   const project = data?.project;
 
   return (
@@ -461,6 +466,65 @@ export default function ProjectDetailPage() {
                     </div>
                   )}
                 </dl>
+
+                {/* Sprint 20 — Bouton livraison partielle */}
+                {project.consolidation.status === "in_progress" &&
+                 !project.consolidation.partial_delivery_approved && (
+                  <div className="mt-3 pt-3 border-t border-slate-100">
+                    {!showPartialApproval ? (
+                      <button
+                        onClick={() => setShowPartialApproval(true)}
+                        className="w-full text-xs border border-amber-300 text-amber-700 rounded px-3 py-1.5 hover:bg-amber-50 transition-colors"
+                      >
+                        Valider livraison partielle
+                      </button>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-xs text-amber-700 font-medium">
+                          Accord client + installateur obtenu ?
+                        </p>
+                        <input
+                          autoFocus
+                          value={partialApprovedBy}
+                          onChange={(e) => setPartialApprovedBy(e.target.value)}
+                          placeholder="Votre nom…"
+                          className="w-full text-xs border border-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              if (partialApprovedBy.trim()) {
+                                void partialDeliveryApproval.mutateAsync({
+                                  id: project.id,
+                                  approved_by: partialApprovedBy.trim(),
+                                }).then(() => {
+                                  setShowPartialApproval(false);
+                                  setPartialApprovedBy("");
+                                });
+                              }
+                            }}
+                            disabled={!partialApprovedBy.trim() || partialDeliveryApproval.isPending}
+                            className="flex-1 text-xs bg-amber-600 text-white rounded px-2 py-1 hover:bg-amber-700 disabled:opacity-50"
+                          >
+                            {partialDeliveryApproval.isPending ? "En cours…" : "Confirmer"}
+                          </button>
+                          <button
+                            onClick={() => { setShowPartialApproval(false); setPartialApprovedBy(""); }}
+                            className="text-xs text-slate-400 hover:text-slate-600"
+                          >
+                            Annuler
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {project.consolidation.partial_delivery_approved && (
+                  <p className="mt-2 text-xs text-amber-600 flex items-center gap-1.5">
+                    <CheckCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                    Livraison partielle approuvée
+                  </p>
+                )}
               </div>
             )}
 

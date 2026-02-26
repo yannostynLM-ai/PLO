@@ -75,12 +75,16 @@ const PayloadSchemaByEventType: Record<string, z.ZodTypeAny> = {
   }),
 
   "stock.shortage": z.object({
-    erp_order_ref: z.string().optional(),
-    sku: z.string(),
-    quantity_ordered: z.number().int().optional(),
-    quantity_available: z.number().int().optional(),
+    erp_order_ref:         z.string().optional(),
+    sku:                   z.string().optional(),            // single SKU rétro-compat
+    shortage_skus:         z.array(z.string()).optional(),   // liste SKUs — Sprint 20
+    quantity_ordered:      z.number().int().optional(),
+    quantity_available:    z.number().int().optional(),
     expected_restock_date: z.string().optional(),
-  }),
+  }).refine(
+    (d) => !!d.sku || (Array.isArray(d.shortage_skus) && d.shortage_skus.length > 0),
+    { message: "sku ou shortage_skus requis" }
+  ),
 
   "stock.check_ok": z.object({
     erp_order_ref: z.string().optional(),
