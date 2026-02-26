@@ -847,4 +847,84 @@ Exemples : `delivery.completed`, `stock.shortage`, `installation.issue`
 
 ---
 
+## 10. État du projet — Sprint 19 (26/02/2026)
+
+### 10.1 Ce qui est livré
+
+| Sprint | Thème | Statut |
+|---|---|---|
+| 0 | Mock-up visuel, pitch vibe coding | ✅ Hors-scope technique |
+| 1 | Fondations : schéma Prisma, types TS, seed Famille Dubois | ✅ |
+| 2 | API d'ingestion `POST /api/events/ingest` + adaptateurs ERP/OMS/TMS/Manual | ✅ |
+| 3 | Moteur d'anomalie : 22 règles ANO-01→22, cron horaire/quotidien, emails | ✅ |
+| 4 | Interface opérateur v1 : liste projets, détail, anomalies, règles | ✅ |
+| 5 | Adaptateurs WFM, CRM, E-commerce (optionnels, clés env) | ✅ |
+| 6 | Notifications avancées : escalade 4h, tickets CRM simulés, dashboard KPI | ✅ |
+| 7 | Portail client tracking (`/suivi/:token`) — mobile-first | ✅ |
+| 8 | Gantt CSS pur + Agent IA d'analyse de risque (Claude Haiku, fallback heuristique) | ✅ |
+| 9 | Authentification JWT httpOnly cookie, SSO-ready, LoginPage, RequireAuth | ✅ |
+| 10 | Gestion utilisateurs opérateurs CRUD (admin uniquement) | ✅ |
+| 11 | Filtres serveur projets + notifications temps réel SSE + cloche | ✅ |
+| 12 | Vue Clients + acquittement anomalies en masse (bulk acknowledge) | ✅ |
+| 13 | Export CSV (projets + anomalies) + filtres avancés anomalies | ✅ |
+| 14 | CRUD complet règles d'anomalie (admin) + création de projets | ✅ |
+| 15 | Notes opérateur par projet + mise à jour statut inline | ✅ |
+| 16 | Journal d'activité (audit log) — 10 actions tracées | ✅ |
+| 17 | Recherche globale Spotlight (Cmd+K) — projets, clients, règles | ✅ |
+| 18 | Attribution projet à opérateur + filtre "Mes projets" | ✅ |
+| 19 | Pagination serveur (projets + anomalies) — composant réutilisable | ✅ |
+
+### 10.2 Périmètre fonctionnel couvert
+
+**Moteur d'anomalie**
+- 22 règles implémentées (ANO-01 à ANO-22), temps réel + cron
+- Déduplication 24h, escalade automatique après 4h sans acquittement
+- Tickets CRM simulés sur anomalies critiques
+- Notifications email (templates ANO-01, 02, 06 + fallback console SMTP)
+
+**API d'ingestion**
+- 7 sources : ERP, OMS, TMS last mile, WFM, CRM, E-commerce, Manual
+- Auth Bearer par source, déduplication `source+source_ref`, dead letter queue
+- Déclenchement règles temps réel sur chaque événement ingéré
+
+**Interface opérateur**
+- Authentification JWT (cookie httpOnly, refresh sur la session active)
+- 8 vues : Dashboard KPI / Clients / Projets / Détail projet / Anomalies / Règles / Utilisateurs / Activité
+- Recherche globale Spotlight (Cmd+K), notifications SSE en temps réel
+- Pagination sur les listes (20 items/page par défaut)
+- Exports CSV (projets + anomalies avec reprise des filtres)
+- Gantt CSS du cycle de vie + analyse de risque IA
+
+**Portail client**
+- URL publique `/suivi/:token` — milestone stepper, aucune donnée interne exposée
+- Mobile-first, hors authentification opérateur
+
+**Administration**
+- CRUD opérateurs (admin uniquement), reset password
+- CRUD règles d'anomalie avec guard 409 si notifications existantes
+- Journal d'activité complet (10 types d'actions tracées)
+
+### 10.3 Ce qui reste à produire
+
+**Fonctionnel manquant (identifié dans la SPEC)**
+- Communication proactive client : email/SMS direct depuis le PLO (question ouverte n°7 et 12)
+- Référentiel delivery stations (actuellement string libre dans les payloads)
+- Clôture projet automatique quand `lastmile.delivered` + `installation.closed` (question ouverte n°10)
+- Accord livraison partielle côté PLO : formulaire de capture du consentement client+installateur (question ouverte n°11)
+- Portail client plus riche : détail commande, ETA consolidation, lien POD
+
+**Technique / Qualité**
+- Tests automatisés : unitaires (moteur d'anomalie), intégration (routes API), E2E (scénario Dubois complet)
+- Configuration SMTP réelle (actuellement fallback console)
+- Rate limiting sur l'API d'ingestion
+- Authentification SSO réelle (OIDC/SAML) — architecture prête, bouchon JWT à remplacer
+- Multi-tenancy / isolation par magasin ou région si déploiement multi-entités
+- Variables d'environnement en secret management (Vault, AWS Secrets Manager...)
+- Monitoring / observabilité (logs structurés, métriques BullMQ, alertes infra)
+- Documentation API OpenAPI/Swagger auto-générée
+
+**Questions ouvertes non tranchées** : n° 1, 2, 3, 4, 6, 7, 8, 10, 11, 12, 13 de la section 9
+
+---
+
 *Document vivant — à mettre à jour à chaque sprint et à partager avec Claude Code en début de session.*
