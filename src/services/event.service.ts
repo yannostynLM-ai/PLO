@@ -175,7 +175,7 @@ const WARNING_EVENT_TYPES = new Set([
   "installation.cancelled",
 ]);
 
-function deriveSeverity(event_type: string): "critical" | "warning" | "info" {
+export function deriveSeverity(event_type: string): "critical" | "warning" | "info" {
   if (CRITICAL_EVENT_TYPES.has(event_type)) return "critical";
   if (WARNING_EVENT_TYPES.has(event_type)) return "warning";
   return "info";
