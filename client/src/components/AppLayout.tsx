@@ -1,7 +1,9 @@
+import { useState, useEffect } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { LayoutList, AlertTriangle, Settings, Activity, BarChart2, LogOut, Users, UserCircle2, ClipboardList } from "lucide-react";
+import { LayoutList, AlertTriangle, Settings, Activity, BarChart2, LogOut, Users, UserCircle2, ClipboardList, Search } from "lucide-react";
 import { useCurrentUser, useLogout } from "../lib/api.ts";
 import NotificationBell from "./NotificationBell.tsx";
+import GlobalSearch from "./GlobalSearch.tsx";
 
 function RoleBadge({ role }: { role: string }) {
   const styles: Record<string, string> = {
@@ -26,6 +28,19 @@ export default function AppLayout() {
   const { data: meData } = useCurrentUser();
   const logout = useLogout();
   const user = meData?.user;
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Cmd+K / Ctrl+K global shortcut
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, []);
 
   const navClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -42,6 +57,9 @@ export default function AppLayout() {
 
   return (
     <div className="flex h-screen bg-slate-50">
+      {/* Global search overlay */}
+      {searchOpen && <GlobalSearch onClose={() => setSearchOpen(false)} />}
+
       {/* Sidebar */}
       <aside className="w-56 flex-shrink-0 bg-slate-900 flex flex-col">
         <div className="px-4 py-5 border-b border-slate-700">
@@ -50,7 +68,17 @@ export default function AppLayout() {
               <Activity className="h-5 w-5 text-blue-400" />
               <span className="font-bold text-white text-sm">PLO</span>
             </div>
-            <NotificationBell />
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setSearchOpen(true)}
+                className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+                title="Recherche globale (⌘K)"
+                aria-label="Recherche globale"
+              >
+                <Search className="h-4 w-4" />
+              </button>
+              <NotificationBell />
+            </div>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">Project Lifecycle</p>
         </div>
@@ -107,7 +135,7 @@ export default function AppLayout() {
             <LogOut className="h-4 w-4" />
             {logout.isPending ? "Déconnexion…" : "Déconnexion"}
           </button>
-          <p className="text-xs text-slate-600 px-1">v1.0 — Sprint 16</p>
+          <p className="text-xs text-slate-600 px-1">v1.0 — Sprint 17</p>
         </div>
       </aside>
 

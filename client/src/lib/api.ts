@@ -677,6 +677,30 @@ export interface ActivityFilters {
   limit?:       number;
 }
 
+// =============================================================================
+// Global search (Sprint 17)
+// =============================================================================
+
+export interface SearchResult {
+  type:      "project" | "customer" | "rule";
+  id:        string;
+  label:     string;
+  sublabel?: string;
+  path:      string;
+}
+
+export function useSearch(q: string) {
+  return useQuery({
+    queryKey: ["search", q],
+    queryFn:  () =>
+      apiFetch<{ results: SearchResult[]; query: string }>(
+        `/api/search?q=${encodeURIComponent(q)}&limit=5`
+      ),
+    enabled:   q.trim().length >= 2,
+    staleTime: 10_000,
+  });
+}
+
 export function useActivity(filters?: ActivityFilters) {
   const params = new URLSearchParams();
   if (filters?.entity_type) params.set("entity_type", filters.entity_type);
