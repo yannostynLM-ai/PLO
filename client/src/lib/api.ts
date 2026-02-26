@@ -538,6 +538,57 @@ export function useBulkAcknowledge() {
   });
 }
 
+export function useCreateRule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Omit<AnomalyRule, "id" | "created_at" | "updated_at">) =>
+      apiFetch<{ rule: AnomalyRule }>("/api/rules", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ["rules"] }); },
+  });
+}
+
+export function useUpdateRule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: Partial<Omit<AnomalyRule, "id" | "created_at" | "updated_at">> & { id: string }) =>
+      apiFetch<{ rule: AnomalyRule }>(`/api/rules/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ["rules"] }); },
+  });
+}
+
+export function useDeleteRule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<void>(`/api/rules/${id}`, { method: "DELETE" }),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ["rules"] }); },
+  });
+}
+
+export function useCreateProject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      customer_id: string;
+      project_type: string;
+      channel_origin?: string;
+      store_id?: string;
+      status?: string;
+    }) =>
+      apiFetch<{ project: { id: string } }>("/api/projects", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ["projects"] }); },
+  });
+}
+
 export function useToggleRule() {
   const qc = useQueryClient();
   return useMutation({

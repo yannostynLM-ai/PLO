@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useProjects, downloadCsv } from "../lib/api.ts";
+import { useProjects, useCreateProject, downloadCsv } from "../lib/api.ts";
 import type { ProjectFilters } from "../lib/api.ts";
 import SeverityBadge from "../components/SeverityBadge.tsx";
 import {
@@ -8,12 +8,177 @@ import {
   projectStatusLabel,
   projectTypeLabel,
 } from "../lib/utils.ts";
-import { RefreshCw, X, Download } from "lucide-react";
+import { RefreshCw, X, Download, Plus } from "lucide-react";
+
+// =============================================================================
+// ProjectFormModal — création de projet
+// =============================================================================
+
+interface ProjectFormModalProps {
+  onClose: () => void;
+}
+
+function ProjectFormModal({ onClose }: ProjectFormModalProps) {
+  const navigate = useNavigate();
+  const createProject = useCreateProject();
+
+  const [customerId,    setCustomerId]    = useState("");
+  const [projectType,   setProjectType]   = useState("kitchen");
+  const [channelOrigin, setChannelOrigin] = useState("store");
+  const [storeId,       setStoreId]       = useState("");
+  const [status,        setStatus]        = useState("draft");
+  const [error,         setError]         = useState<string | null>(null);
+  const [success,       setSuccess]       = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    try {
+      const result = await createProject.mutateAsync({
+        customer_id:    customerId,
+        project_type:   projectType,
+        channel_origin: channelOrigin,
+        store_id:       storeId || undefined,
+        status,
+      });
+      setSuccess(true);
+      setTimeout(() => {
+        void navigate(`/projects/${result.project.id}`);
+      }, 600);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
+    }
+  }
+
+  const inputCls = "w-full text-sm border border-slate-200 rounded px-3 py-2 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <h2 className="text-base font-semibold text-slate-900">Nouveau projet</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={(e) => void handleSubmit(e)} className="px-6 py-5 space-y-4">
+          {/* Customer ID */}
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">ID Client (CRM)</label>
+            <input
+              type="text"
+              value={customerId}
+              onChange={(e) => setCustomerId(e.target.value)}
+              required
+              placeholder="Ex: CLIENT-2024-00123"
+              className={inputCls}
+            />
+          </div>
+
+          {/* Type + Channel row */}
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-slate-600 mb-1">Type de projet</label>
+              <select
+                value={projectType}
+                onChange={(e) => setProjectType(e.target.value)}
+                className={inputCls}
+              >
+                <option value="kitchen">Cuisine</option>
+                <option value="bathroom">Salle de bain</option>
+                <option value="energy_renovation">Rénovation énergétique</option>
+                <option value="other">Autre</option>
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-slate-600 mb-1">Canal d'origine</label>
+              <select
+                value={channelOrigin}
+                onChange={(e) => setChannelOrigin(e.target.value)}
+                className={inputCls}
+              >
+                <option value="store">Magasin</option>
+                <option value="web">Web</option>
+                <option value="mixed">Mixte</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Store ID */}
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">
+              Magasin référent <span className="font-normal text-slate-400">(optionnel)</span>
+            </label>
+            <input
+              type="text"
+              value={storeId}
+              onChange={(e) => setStoreId(e.target.value)}
+              placeholder="Ex: STORE-75001"
+              className={inputCls}
+            />
+          </div>
+
+          {/* Status */}
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Statut initial</label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className={inputCls}
+            >
+              <option value="draft">Brouillon</option>
+              <option value="active">Actif</option>
+              <option value="on_hold">En attente</option>
+            </select>
+          </div>
+
+          {/* Error / Success */}
+          {error && (
+            <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">
+              Projet créé — redirection…
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-sm text-slate-600 border border-slate-200 rounded px-4 py-2 hover:bg-slate-50"
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              disabled={createProject.isPending || success}
+              className="text-sm bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700 disabled:opacity-50"
+            >
+              {createProject.isPending ? "Création…" : "Créer le projet"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// ProjectsPage
+// =============================================================================
 
 export default function ProjectsPage() {
   const navigate = useNavigate();
   const [filters, setFilters] = useState<ProjectFilters>({});
   const [rawQ, setRawQ] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
 
   // Debounce 300ms sur la recherche texte
   useEffect(() => {
@@ -105,6 +270,13 @@ export default function ProjectsPage() {
               Réinitialiser
             </button>
           )}
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-1.5 text-sm bg-blue-600 text-white rounded px-3 py-1.5 hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Nouveau projet
+          </button>
           <button
             onClick={() => void handleExport()}
             disabled={isExporting}
@@ -253,6 +425,9 @@ export default function ProjectsPage() {
           </table>
         </div>
       )}
+
+      {/* Modal création */}
+      {showCreate && <ProjectFormModal onClose={() => setShowCreate(false)} />}
     </div>
   );
 }

@@ -1,14 +1,24 @@
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
+import { randomUUID } from "crypto";
 import type { ProjectStatus, ProjectType } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 
 // =============================================================================
-// Routes publiques — Projets
+// Routes — Projets (Sprint 14 : POST /api/projects ajouté)
+// POST /api/projects           — créer un projet
 // GET /api/projects            — liste avec sévérité anomalie calculée
 // GET /api/projects/export.csv — export CSV (mêmes filtres)
 // GET /api/projects/:id        — détail complet
 // =============================================================================
+
+const CreateProjectSchema = z.object({
+  customer_id:    z.string().min(1, "customer_id requis"),
+  project_type:   z.enum(["kitchen", "bathroom", "energy_renovation", "other"]),
+  channel_origin: z.enum(["store", "web", "mixed"]).default("store"),
+  store_id:       z.string().optional(),
+  status:         z.enum(["draft", "active", "on_hold", "completed", "cancelled"]).default("draft"),
+});
 
 // Helper CSV — échappe les virgules et guillemets
 function toCsvRow(values: (string | number | null | undefined)[]): string {
@@ -39,6 +49,28 @@ function sevenDaysAgo(): Date {
 }
 
 export const projectsRoute: FastifyPluginAsync = async (fastify) => {
+  // --------------------------------------------------------------------------
+  // POST /api/projects
+  // --------------------------------------------------------------------------
+  fastify.post("/api/projects", async (request, reply) => {
+    const parsed = CreateProjectSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(422).send({
+        statusCode: 422,
+        error: "Unprocessable Entity",
+        message: parsed.error.issues[0]?.message ?? "Payload invalide",
+        details: parsed.error.flatten(),
+      });
+    }
+    const project = await prisma.project.create({
+      data: {
+        ...parsed.data,
+        tracking_token: randomUUID(),
+      },
+    });
+    return reply.code(201).send({ project });
+  });
+
   // --------------------------------------------------------------------------
   // GET /api/projects
   // --------------------------------------------------------------------------
