@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useProjects } from "../lib/api.ts";
+import { useProjects, downloadCsv } from "../lib/api.ts";
 import type { ProjectFilters } from "../lib/api.ts";
 import SeverityBadge from "../components/SeverityBadge.tsx";
 import {
@@ -8,7 +8,7 @@ import {
   projectStatusLabel,
   projectTypeLabel,
 } from "../lib/utils.ts";
-import { RefreshCw, X } from "lucide-react";
+import { RefreshCw, X, Download } from "lucide-react";
 
 export default function ProjectsPage() {
   const navigate = useNavigate();
@@ -32,6 +32,26 @@ export default function ProjectsPage() {
   const projects = data?.projects ?? [];
 
   const hasFilters = rawQ !== "" || Object.keys(filters).length > 0;
+
+  const [isExporting, setIsExporting] = useState(false);
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (filters.q)        params.set("q",        filters.q);
+      if (filters.status)   params.set("status",   filters.status);
+      if (filters.severity) params.set("severity", filters.severity);
+      if (filters.type)     params.set("type",     filters.type);
+      if (filters.store)    params.set("store",    filters.store);
+      const qs = params.toString() ? `?${params.toString()}` : "";
+      await downloadCsv(
+        `/api/projects/export.csv${qs}`,
+        `projets-${new Date().toISOString().slice(0, 10)}.csv`,
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const resetFilters = () => {
     setFilters({});
@@ -85,6 +105,14 @@ export default function ProjectsPage() {
               Réinitialiser
             </button>
           )}
+          <button
+            onClick={() => void handleExport()}
+            disabled={isExporting}
+            className="flex items-center gap-1.5 text-sm border border-slate-200 rounded px-3 py-1.5 text-slate-500 hover:text-green-600 transition-colors"
+          >
+            <Download className="h-4 w-4" />
+            {isExporting ? "Export…" : "Exporter CSV"}
+          </button>
           <button
             onClick={() => void refetch()}
             disabled={isFetching}

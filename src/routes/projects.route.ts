@@ -5,9 +5,24 @@ import { prisma } from "../lib/prisma.js";
 
 // =============================================================================
 // Routes publiques — Projets
-// GET /api/projects       — liste avec sévérité anomalie calculée
-// GET /api/projects/:id   — détail complet
+// GET /api/projects            — liste avec sévérité anomalie calculée
+// GET /api/projects/export.csv — export CSV (mêmes filtres)
+// GET /api/projects/:id        — détail complet
 // =============================================================================
+
+// Helper CSV — échappe les virgules et guillemets
+function toCsvRow(values: (string | number | null | undefined)[]): string {
+  return values
+    .map((v) => {
+      if (v === null || v === undefined) return "";
+      const s = String(v);
+      if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+        return `"${s.replace(/"/g, '""')}"`;
+      }
+      return s;
+    })
+    .join(",");
+}
 
 const ProjectsQuerySchema = z.object({
   q:        z.string().optional(),
@@ -127,6 +142,92 @@ export const projectsRoute: FastifyPluginAsync = async (fastify) => {
       : result;
 
     return reply.send({ projects: finalResult });
+  });
+
+  // --------------------------------------------------------------------------
+  // GET /api/projects/export.csv
+  // Route statique → priorité sur /:id (comportement Fastify garanti)
+  // --------------------------------------------------------------------------
+  fastify.get("/api/projects/export.csv", async (request, reply) => {
+    const parseResult = ProjectsQuerySchema.safeParse(request.query);
+    if (!parseResult.success) {
+      return reply.code(422).send({
+        statusCode: 422,
+        error: "Unprocessable Entity",
+        message: parseResult.error.issues[0]?.message ?? "Invalid query params",
+      });
+    }
+    const { q, status, severity, type, store } = parseResult.data;
+
+    const where = {
+      ...(q      ? { customer_id:  { contains: q,     mode: "insensitive" as const } } : {}),
+      ...(status ? { status:       status as ProjectStatus  } : {}),
+      ...(type   ? { project_type: type   as ProjectType    } : {}),
+      ...(store  ? { store_id:     { contains: store, mode: "insensitive" as const } } : {}),
+    };
+
+    const since = sevenDaysAgo();
+    const projects = await prisma.project.findMany({
+      where,
+      include: {
+        notifications: {
+          where: { status: "sent", sent_at: { gte: since } },
+          include: {
+            rule: { select: { severity: true } },
+            event: { select: { acknowledged_by: true, created_at: true } },
+          },
+          orderBy: { sent_at: "asc" },
+        },
+        events: {
+          orderBy: { created_at: "desc" },
+          take: 1,
+          select: { created_at: true },
+        },
+      },
+      orderBy: { created_at: "desc" },
+    });
+
+    const result = projects.map((project) => {
+      const notifs = project.notifications;
+      let anomaly_severity: "ok" | "warning" | "critical" = "ok";
+      if (notifs.some((n) => n.rule?.severity === "critical")) anomaly_severity = "critical";
+      else if (notifs.some((n) => n.rule?.severity === "warning")) anomaly_severity = "warning";
+      const unacked = notifs.filter((n) => !n.event?.acknowledged_by);
+      return {
+        customer_id: project.customer_id,
+        project_type: project.project_type,
+        status: project.status,
+        channel_origin: project.channel_origin,
+        store_id: project.store_id,
+        created_at: project.created_at,
+        anomaly_severity,
+        active_anomaly_count: unacked.length,
+        last_event_at: project.events[0]?.created_at ?? null,
+      };
+    });
+
+    const filtered = severity ? result.filter((p) => p.anomaly_severity === severity) : result;
+
+    const header = toCsvRow([
+      "Client", "Type", "Statut", "Canal", "Magasin",
+      "Sévérité", "Anomalies actives", "Dernier événement", "Créé le",
+    ]);
+    const rows = filtered.map((p) =>
+      toCsvRow([
+        p.customer_id, p.project_type, p.status, p.channel_origin, p.store_id ?? "",
+        p.anomaly_severity, p.active_anomaly_count,
+        p.last_event_at?.toISOString() ?? "",
+        p.created_at.toISOString(),
+      ])
+    );
+
+    const csv = [header, ...rows].join("\n");
+    const filename = `projets-${new Date().toISOString().slice(0, 10)}.csv`;
+
+    return reply
+      .header("Content-Type", "text/csv; charset=utf-8")
+      .header("Content-Disposition", `attachment; filename="${filename}"`)
+      .send(csv);
   });
 
   // --------------------------------------------------------------------------

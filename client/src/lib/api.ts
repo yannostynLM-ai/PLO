@@ -274,17 +274,44 @@ export function useProject(id: string) {
   });
 }
 
-export function useAnomalies(filters?: { severity?: string; status?: string }) {
+export interface AnomalyFilters {
+  status?: string;
+  severity?: string;
+  from?: string;
+  to?: string;
+  customer_id?: string;
+  rule_name?: string;
+}
+
+export function useAnomalies(filters?: AnomalyFilters) {
   const params = new URLSearchParams();
-  if (filters?.severity) params.set("severity", filters.severity);
-  if (filters?.status) params.set("status", filters.status);
-  const qs = params.toString() ? `?${params}` : "";
+  if (filters?.status)      params.set("status",      filters.status);
+  if (filters?.severity)    params.set("severity",    filters.severity);
+  if (filters?.from)        params.set("from",        filters.from);
+  if (filters?.to)          params.set("to",          filters.to);
+  if (filters?.customer_id) params.set("customer_id", filters.customer_id);
+  if (filters?.rule_name)   params.set("rule_name",   filters.rule_name);
+  const qs = params.toString() ? `?${params.toString()}` : "";
 
   return useQuery({
-    queryKey: ["anomalies", filters],
+    queryKey: ["anomalies", filters ?? {}],
     queryFn: () => apiFetch<{ anomalies: AnomalyNotification[] }>(`/api/anomalies${qs}`),
     refetchInterval: 30_000,
   });
+}
+
+export async function downloadCsv(path: string, filename: string): Promise<void> {
+  const res = await fetch(path);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 export function useRules() {

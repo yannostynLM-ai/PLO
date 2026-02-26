@@ -1,12 +1,12 @@
-import { useState } from "react";
-import { useAnomalies, useAcknowledge, useBulkAcknowledge } from "../lib/api.ts";
-import type { AnomalyNotification } from "../lib/api.ts";
+import { useState, useEffect } from "react";
+import { useAnomalies, useAcknowledge, useBulkAcknowledge, downloadCsv } from "../lib/api.ts";
+import type { AnomalyNotification, AnomalyFilters } from "../lib/api.ts";
 import SeverityBadge from "../components/SeverityBadge.tsx";
 import { formatDate, projectTypeLabel } from "../lib/utils.ts";
-import { CheckCircle, RefreshCw, CheckSquare } from "lucide-react";
+import { CheckCircle, RefreshCw, CheckSquare, Download, X } from "lucide-react";
 
 // =============================================================================
-// AnomalyCard — carte d'anomalie avec checkbox de sélection
+// AnomalyCard
 // =============================================================================
 
 interface AnomalyCardProps {
@@ -29,7 +29,6 @@ function AnomalyCard({ anomaly, checked, onToggle }: AnomalyCardProps) {
       }`}
     >
       <div className="flex items-start gap-3">
-        {/* Checkbox */}
         <label className="flex items-center pt-0.5 flex-shrink-0 cursor-pointer" onClick={(e) => e.stopPropagation()}>
           <input
             type="checkbox"
@@ -41,11 +40,8 @@ function AnomalyCard({ anomaly, checked, onToggle }: AnomalyCardProps) {
         </label>
 
         <div className="flex-1 min-w-0">
-          {/* Rule + severity */}
           <div className="flex items-center gap-2 flex-wrap mb-1.5">
-            {anomaly.rule && (
-              <SeverityBadge severity={anomaly.rule.severity} size="sm" />
-            )}
+            {anomaly.rule && <SeverityBadge severity={anomaly.rule.severity} size="sm" />}
             <span className="font-semibold text-slate-800 text-sm">
               {anomaly.rule?.name ?? "Règle inconnue"}
             </span>
@@ -56,7 +52,6 @@ function AnomalyCard({ anomaly, checked, onToggle }: AnomalyCardProps) {
             )}
           </div>
 
-          {/* Project */}
           {anomaly.project && (
             <p className="text-xs text-slate-600">
               Client : <span className="font-medium">{anomaly.project.customer_id}</span>
@@ -64,20 +59,15 @@ function AnomalyCard({ anomaly, checked, onToggle }: AnomalyCardProps) {
             </p>
           )}
 
-          {/* Event type */}
           {anomaly.event && (
-            <p className="text-xs text-slate-500 font-mono mt-0.5">
-              {anomaly.event.event_type}
-            </p>
+            <p className="text-xs text-slate-500 font-mono mt-0.5">{anomaly.event.event_type}</p>
           )}
 
-          {/* Meta */}
           <div className="flex items-center gap-3 mt-2 text-xs text-slate-400">
             <span>Envoyé le {formatDate(anomaly.sent_at)}</span>
             <span>→ {anomaly.recipient}</span>
           </div>
 
-          {/* Acked */}
           {isAcked && (
             <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1">
               <CheckCircle className="h-3.5 w-3.5" />
@@ -86,7 +76,6 @@ function AnomalyCard({ anomaly, checked, onToggle }: AnomalyCardProps) {
           )}
         </div>
 
-        {/* Acknowledge button (single) */}
         {!isAcked && (
           <div className="flex-shrink-0">
             {!showAckForm ? (
@@ -105,20 +94,13 @@ function AnomalyCard({ anomaly, checked, onToggle }: AnomalyCardProps) {
                   className="border rounded px-2 py-1 text-xs w-28 focus:outline-none focus:ring-1 focus:ring-blue-400"
                 />
                 <button
-                  onClick={() => {
-                    if (ackBy.trim()) {
-                      acknowledge({ id: anomaly.id, acknowledged_by: ackBy.trim() });
-                    }
-                  }}
+                  onClick={() => { if (ackBy.trim()) acknowledge({ id: anomaly.id, acknowledged_by: ackBy.trim() }); }}
                   disabled={isPending || !ackBy.trim()}
                   className="text-xs bg-blue-600 text-white rounded px-2 py-1 hover:bg-blue-700 disabled:opacity-50"
                 >
                   OK
                 </button>
-                <button
-                  onClick={() => setShowAckForm(false)}
-                  className="text-xs text-slate-400 hover:text-slate-600"
-                >
+                <button onClick={() => setShowAckForm(false)} className="text-xs text-slate-400 hover:text-slate-600">
                   ✕
                 </button>
               </div>
@@ -135,38 +117,73 @@ function AnomalyCard({ anomaly, checked, onToggle }: AnomalyCardProps) {
 // =============================================================================
 
 export default function AnomaliesPage() {
-  const [severityFilter, setSeverityFilter] = useState<"all" | "critical" | "warning">("all");
-  const { data, isLoading, error, refetch, isFetching } = useAnomalies(
-    severityFilter !== "all" ? { severity: severityFilter } : undefined
-  );
+  const [filters, setFilters] = useState<AnomalyFilters>({});
+  const [rawCustomer, setRawCustomer] = useState("");
+  const [rawRule, setRawRule] = useState("");
 
-  // Bulk acknowledgment state
+  // Debounce 300ms sur les champs texte
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setFilters((prev) => {
+        const next = { ...prev };
+        if (rawCustomer) next.customer_id = rawCustomer; else delete next.customer_id;
+        return next;
+      });
+    }, 300);
+    return () => clearTimeout(t);
+  }, [rawCustomer]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setFilters((prev) => {
+        const next = { ...prev };
+        if (rawRule) next.rule_name = rawRule; else delete next.rule_name;
+        return next;
+      });
+    }, 300);
+    return () => clearTimeout(t);
+  }, [rawRule]);
+
+  const { data, isLoading, error, refetch, isFetching } = useAnomalies(filters);
+
+  // Bulk acknowledgment
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkAckBy, setBulkAckBy] = useState("");
   const bulkAck = useBulkAcknowledge();
 
+  // CSV export
+  const [isExporting, setIsExporting] = useState(false);
+
   const anomalies = data?.anomalies ?? [];
   const unackedAnomalies = anomalies.filter((a) => !a.event?.acknowledged_by);
-
   const critical = anomalies.filter((a) => a.rule?.severity === "critical");
-  const warning = anomalies.filter((a) => a.rule?.severity === "warning");
-  const other = anomalies.filter((a) => !a.rule || !["critical", "warning"].includes(a.rule.severity));
+  const warning  = anomalies.filter((a) => a.rule?.severity === "warning");
+  const other    = anomalies.filter((a) => !a.rule || !["critical", "warning"].includes(a.rule.severity));
 
-  const toggleSelect = (id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+  const hasFilters = rawCustomer !== "" || rawRule !== "" || Object.keys(filters).length > 0;
+
+  const resetFilters = () => {
+    setFilters({});
+    setRawCustomer("");
+    setRawRule("");
+  };
+
+  const setSeverity = (s: string | undefined) => {
+    setFilters((prev) => {
+      const next = { ...prev };
+      if (s) next.severity = s; else delete next.severity;
       return next;
     });
   };
 
-  const selectAll = () => {
-    setSelected(new Set(unackedAnomalies.map((a) => a.id)));
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   };
-
-  const clearSelection = () => setSelected(new Set());
 
   const handleBulkAck = () => {
     if (!bulkAckBy.trim() || selected.size === 0) return;
@@ -182,6 +199,26 @@ export default function AnomaliesPage() {
     );
   };
 
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (filters.status)      params.set("status",      filters.status);
+      if (filters.severity)    params.set("severity",    filters.severity);
+      if (filters.from)        params.set("from",        filters.from);
+      if (filters.to)          params.set("to",          filters.to);
+      if (filters.customer_id) params.set("customer_id", filters.customer_id);
+      if (filters.rule_name)   params.set("rule_name",   filters.rule_name);
+      const qs = params.toString() ? `?${params.toString()}` : "";
+      await downloadCsv(
+        `/api/anomalies/export.csv${qs}`,
+        `anomalies-${new Date().toISOString().slice(0, 10)}.csv`
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="p-6 pb-24">
       {/* Header */}
@@ -192,26 +229,37 @@ export default function AnomaliesPage() {
             {anomalies.length} notification{anomalies.length > 1 ? "s" : ""} (30 derniers jours)
           </p>
         </div>
-        <button
-          onClick={() => void refetch()}
-          disabled={isFetching}
-          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-blue-600 border border-slate-200 rounded px-3 py-1.5"
-        >
-          <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-          Actualiser
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => void handleExport()}
+            disabled={isExporting}
+            className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-green-600 border border-slate-200 rounded px-3 py-1.5 transition-colors disabled:opacity-50"
+          >
+            <Download className="h-4 w-4" />
+            {isExporting ? "Export…" : "Exporter CSV"}
+          </button>
+          <button
+            onClick={() => void refetch()}
+            disabled={isFetching}
+            className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-blue-600 border border-slate-200 rounded px-3 py-1.5"
+          >
+            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+            Actualiser
+          </button>
+        </div>
       </div>
 
-      {/* Filters + select-all */}
-      <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 items-center mb-5">
+        {/* Sévérité */}
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-slate-500">Sévérité :</span>
           {(["all", "critical", "warning"] as const).map((s) => (
             <button
               key={s}
-              onClick={() => setSeverityFilter(s)}
+              onClick={() => setSeverity(s === "all" ? undefined : s)}
               className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                severityFilter === s
+                (s === "all" ? !filters.severity : filters.severity === s)
                   ? "bg-slate-800 text-white border-slate-800"
                   : "border-slate-200 text-slate-600 hover:border-slate-400"
               }`}
@@ -220,10 +268,75 @@ export default function AnomaliesPage() {
             </button>
           ))}
         </div>
+
+        {/* Date du */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-slate-500">Du</span>
+          <input
+            type="date"
+            value={filters.from ?? ""}
+            onChange={(e) => setFilters((prev) => {
+              const next = { ...prev };
+              if (e.target.value) next.from = e.target.value; else delete next.from;
+              return next;
+            })}
+            className="text-xs border border-slate-200 rounded px-2 py-1 text-slate-600 focus:outline-none focus:border-blue-400"
+          />
+        </div>
+
+        {/* Date au */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-slate-500">au</span>
+          <input
+            type="date"
+            value={filters.to ?? ""}
+            onChange={(e) => setFilters((prev) => {
+              const next = { ...prev };
+              if (e.target.value) next.to = e.target.value; else delete next.to;
+              return next;
+            })}
+            className="text-xs border border-slate-200 rounded px-2 py-1 text-slate-600 focus:outline-none focus:border-blue-400"
+          />
+        </div>
+
+        {/* Client */}
+        <input
+          type="text"
+          value={rawCustomer}
+          onChange={(e) => setRawCustomer(e.target.value)}
+          placeholder="Client…"
+          className="text-sm border border-slate-200 rounded px-3 py-1.5 w-36 focus:outline-none focus:border-blue-400"
+        />
+
+        {/* Règle */}
+        <input
+          type="text"
+          value={rawRule}
+          onChange={(e) => setRawRule(e.target.value)}
+          placeholder="Règle…"
+          className="text-sm border border-slate-200 rounded px-3 py-1.5 w-36 focus:outline-none focus:border-blue-400"
+        />
+
+        {/* Réinitialiser */}
+        {hasFilters && (
+          <button
+            onClick={resetFilters}
+            className="flex items-center gap-1 text-xs text-slate-400 hover:text-red-600 border border-slate-200 rounded px-2.5 py-1.5 transition-colors"
+          >
+            <X className="h-3.5 w-3.5" />
+            Réinitialiser
+          </button>
+        )}
+
+        {/* Sélectionner tout */}
         {unackedAnomalies.length > 0 && (
           <button
-            onClick={selected.size === unackedAnomalies.length ? clearSelection : selectAll}
-            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-600 border border-slate-200 rounded px-2.5 py-1 transition-colors"
+            onClick={() =>
+              selected.size === unackedAnomalies.length
+                ? setSelected(new Set())
+                : setSelected(new Set(unackedAnomalies.map((a) => a.id)))
+            }
+            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-600 border border-slate-200 rounded px-2.5 py-1 transition-colors ml-auto"
           >
             <CheckSquare className="h-3.5 w-3.5" />
             {selected.size === unackedAnomalies.length ? "Désélectionner tout" : "Tout sélectionner"}
@@ -248,12 +361,7 @@ export default function AnomaliesPage() {
               </h2>
               <div className="space-y-3">
                 {critical.map((a) => (
-                  <AnomalyCard
-                    key={a.id}
-                    anomaly={a}
-                    checked={selected.has(a.id)}
-                    onToggle={toggleSelect}
-                  />
+                  <AnomalyCard key={a.id} anomaly={a} checked={selected.has(a.id)} onToggle={toggleSelect} />
                 ))}
               </div>
             </section>
@@ -265,12 +373,7 @@ export default function AnomaliesPage() {
               </h2>
               <div className="space-y-3">
                 {warning.map((a) => (
-                  <AnomalyCard
-                    key={a.id}
-                    anomaly={a}
-                    checked={selected.has(a.id)}
-                    onToggle={toggleSelect}
-                  />
+                  <AnomalyCard key={a.id} anomaly={a} checked={selected.has(a.id)} onToggle={toggleSelect} />
                 ))}
               </div>
             </section>
@@ -282,12 +385,7 @@ export default function AnomaliesPage() {
               </h2>
               <div className="space-y-3">
                 {other.map((a) => (
-                  <AnomalyCard
-                    key={a.id}
-                    anomaly={a}
-                    checked={selected.has(a.id)}
-                    onToggle={toggleSelect}
-                  />
+                  <AnomalyCard key={a.id} anomaly={a} checked={selected.has(a.id)} onToggle={toggleSelect} />
                 ))}
               </div>
             </section>
@@ -303,7 +401,7 @@ export default function AnomaliesPage() {
           </span>
           <div className="flex items-center gap-3">
             <button
-              onClick={clearSelection}
+              onClick={() => setSelected(new Set())}
               className="text-sm text-slate-500 hover:text-slate-700 border border-slate-200 rounded px-3 py-1.5 transition-colors"
             >
               Désélectionner

@@ -3,12 +3,23 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 
 // =============================================================================
-// Routes publiques — Anomalies (Notifications)
-// GET  /api/anomalies              — liste des 30 derniers jours (status=sent)
-// POST /api/anomalies/:id/acknowledge — acquittement
+// Routes — Anomalies (Notifications)
+// GET  /api/anomalies                  — liste filtrée (30j par défaut)
+// GET  /api/anomalies/export.csv       — export CSV (mêmes filtres)
+// POST /api/anomalies/:id/acknowledge  — acquittement unitaire
+// POST /api/anomalies/bulk-acknowledge — acquittement en masse
 // =============================================================================
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+const AnomaliesQuerySchema = z.object({
+  status:      z.string().optional(),
+  severity:    z.enum(["warning", "critical"]).optional(),
+  from:        z.string().optional(),
+  to:          z.string().optional(),
+  customer_id: z.string().optional(),
+  rule_name:   z.string().optional(),
+});
 
 const AcknowledgeBodySchema = z.object({
   acknowledged_by: z.string().min(1, "acknowledged_by requis"),
@@ -21,47 +32,124 @@ const BulkAcknowledgeBodySchema = z.object({
   comment: z.string().optional(),
 });
 
+// Helper CSV — échappe les virgules et guillemets
+function toCsvRow(values: (string | number | null | undefined)[]): string {
+  return values
+    .map((v) => {
+      if (v === null || v === undefined) return "";
+      const s = String(v);
+      if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+        return `"${s.replace(/"/g, '""')}"`;
+      }
+      return s;
+    })
+    .join(",");
+}
+
+/** Construit le where Prisma à partir des query params parsés. */
+function buildWhere(params: z.infer<typeof AnomaliesQuerySchema>) {
+  const { status, severity, from, to, customer_id, rule_name } = params;
+
+  const statusFilter = status ?? "sent";
+  const dateGte = from ? new Date(from) : new Date(Date.now() - THIRTY_DAYS_MS);
+  const dateLte = to ? new Date(to) : undefined;
+
+  const ruleFilter = {
+    ...(severity  ? { severity }                                                          : {}),
+    ...(rule_name ? { name: { contains: rule_name, mode: "insensitive" as const } }      : {}),
+  };
+
+  return {
+    status: statusFilter as "pending" | "sent" | "failed",
+    sent_at: { gte: dateGte, ...(dateLte ? { lte: dateLte } : {}) },
+    ...(Object.keys(ruleFilter).length > 0 ? { rule: ruleFilter } : {}),
+    ...(customer_id
+      ? { project: { customer_id: { contains: customer_id, mode: "insensitive" as const } } }
+      : {}),
+  };
+}
+
 export const anomaliesRoute: FastifyPluginAsync = async (fastify) => {
   // --------------------------------------------------------------------------
   // GET /api/anomalies
   // --------------------------------------------------------------------------
   fastify.get("/api/anomalies", async (request, reply) => {
-    const query = request.query as Record<string, string | undefined>;
-    const since = new Date(Date.now() - THIRTY_DAYS_MS);
-
-    const statusFilter = query.status ?? "sent";
+    const parseResult = AnomaliesQuerySchema.safeParse(request.query);
+    if (!parseResult.success) {
+      return reply.code(422).send({
+        statusCode: 422,
+        error: "Unprocessable Entity",
+        message: parseResult.error.issues[0]?.message ?? "Invalid query params",
+      });
+    }
 
     const notifications = await prisma.notification.findMany({
-      where: {
-        status: statusFilter as "pending" | "sent" | "failed",
-        sent_at: { gte: since },
-        ...(query.severity
-          ? { rule: { severity: query.severity as "warning" | "critical" } }
-          : {}),
-      },
+      where: buildWhere(parseResult.data),
       include: {
         rule: { select: { id: true, name: true, severity: true, scope: true } },
-        project: {
-          select: {
-            id: true,
-            customer_id: true,
-            project_type: true,
-            status: true,
-          },
-        },
-        event: {
-          select: {
-            id: true,
-            event_type: true,
-            acknowledged_by: true,
-            created_at: true,
-          },
-        },
+        project: { select: { id: true, customer_id: true, project_type: true, status: true } },
+        event: { select: { id: true, event_type: true, acknowledged_by: true, created_at: true } },
       },
       orderBy: { sent_at: "desc" },
     });
 
     return reply.send({ anomalies: notifications });
+  });
+
+  // --------------------------------------------------------------------------
+  // GET /api/anomalies/export.csv
+  // Route statique → priorité sur /:id (comportement Fastify garanti)
+  // --------------------------------------------------------------------------
+  fastify.get("/api/anomalies/export.csv", async (request, reply) => {
+    const parseResult = AnomaliesQuerySchema.safeParse(request.query);
+    if (!parseResult.success) {
+      return reply.code(422).send({
+        statusCode: 422,
+        error: "Unprocessable Entity",
+        message: parseResult.error.issues[0]?.message ?? "Invalid query params",
+      });
+    }
+
+    const notifications = await prisma.notification.findMany({
+      where: buildWhere(parseResult.data),
+      include: {
+        rule: { select: { name: true, severity: true, scope: true } },
+        project: { select: { customer_id: true, project_type: true } },
+        event: { select: { event_type: true, acknowledged_by: true } },
+      },
+      orderBy: { sent_at: "desc" },
+    });
+
+    const header = toCsvRow([
+      "Date envoi", "Sévérité", "Règle", "Scope",
+      "Client", "Type projet", "Événement", "Destinataire",
+      "Acquitté par", "Escaladé le", "Ticket CRM", "Statut",
+    ]);
+
+    const rows = notifications.map((n) =>
+      toCsvRow([
+        n.sent_at?.toISOString() ?? "",
+        n.rule?.severity ?? "",
+        n.rule?.name ?? "",
+        n.rule?.scope ?? "",
+        n.project?.customer_id ?? "",
+        n.project?.project_type ?? "",
+        n.event?.event_type ?? "",
+        n.recipient,
+        n.event?.acknowledged_by ?? "",
+        n.escalated_at?.toISOString() ?? "",
+        n.crm_ticket_ref ?? "",
+        n.status,
+      ])
+    );
+
+    const csv = [header, ...rows].join("\n");
+    const filename = `anomalies-${new Date().toISOString().slice(0, 10)}.csv`;
+
+    return reply
+      .header("Content-Type", "text/csv; charset=utf-8")
+      .header("Content-Disposition", `attachment; filename="${filename}"`)
+      .send(csv);
   });
 
   // --------------------------------------------------------------------------
