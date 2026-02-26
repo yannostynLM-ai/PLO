@@ -3,6 +3,7 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 import type { ProjectStatus, ProjectType } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
+import { logActivity } from "../lib/activity.js";
 
 // =============================================================================
 // Routes — Projets (Sprint 15 : PATCH + notes ajoutés)
@@ -80,6 +81,15 @@ export const projectsRoute: FastifyPluginAsync = async (fastify) => {
         tracking_token: randomUUID(),
       },
     });
+
+    logActivity({
+      action:        "project_created",
+      entity_type:   "project",
+      entity_id:     project.id,
+      entity_label:  project.customer_id,
+      operator_name: request.jwtUser.name,
+    });
+
     return reply.code(201).send({ project });
   });
 
@@ -294,7 +304,7 @@ export const projectsRoute: FastifyPluginAsync = async (fastify) => {
 
       const existing = await prisma.project.findUnique({
         where: { id },
-        select: { id: true },
+        select: { id: true, status: true, customer_id: true },
       });
       if (!existing) {
         return reply.code(404).send({
@@ -309,6 +319,18 @@ export const projectsRoute: FastifyPluginAsync = async (fastify) => {
         data: parsed.data,
         select: { id: true, status: true, store_id: true, updated_at: true },
       });
+
+      if (parsed.data.status && parsed.data.status !== existing.status) {
+        logActivity({
+          action:        "project_status_changed",
+          entity_type:   "project",
+          entity_id:     id,
+          entity_label:  existing.customer_id,
+          operator_name: request.jwtUser.name,
+          details:       { from: existing.status, to: parsed.data.status },
+        });
+      }
+
       return reply.send({ project });
     }
   );
@@ -333,7 +355,7 @@ export const projectsRoute: FastifyPluginAsync = async (fastify) => {
 
       const project = await prisma.project.findUnique({
         where: { id },
-        select: { id: true },
+        select: { id: true, customer_id: true },
       });
       if (!project) {
         return reply.code(404).send({
@@ -346,6 +368,15 @@ export const projectsRoute: FastifyPluginAsync = async (fastify) => {
       const note = await prisma.projectNote.create({
         data: { project_id: id, ...parsed.data },
       });
+
+      logActivity({
+        action:        "project_note_added",
+        entity_type:   "project",
+        entity_id:     id,
+        entity_label:  project.customer_id,
+        operator_name: parsed.data.author_name,
+      });
+
       return reply.code(201).send({ note });
     }
   );

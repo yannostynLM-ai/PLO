@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
+import { logActivity } from "../lib/activity.js";
 
 // =============================================================================
 // Routes — Anomalies (Notifications)
@@ -172,7 +173,12 @@ export const anomaliesRoute: FastifyPluginAsync = async (fastify) => {
 
       const notification = await prisma.notification.findUnique({
         where: { id },
-        select: { id: true, event_id: true, status: true },
+        select: {
+          id: true,
+          event_id: true,
+          status: true,
+          project: { select: { customer_id: true } },
+        },
       });
 
       if (!notification) {
@@ -189,6 +195,14 @@ export const anomaliesRoute: FastifyPluginAsync = async (fastify) => {
           data: { acknowledged_by: bodyResult.data.acknowledged_by },
         });
       }
+
+      logActivity({
+        action:        "anomaly_acknowledged",
+        entity_type:   "anomaly",
+        entity_id:     id,
+        entity_label:  notification.project?.customer_id ?? undefined,
+        operator_name: bodyResult.data.acknowledged_by,
+      });
 
       return reply.send({
         acknowledged: true,
@@ -237,6 +251,13 @@ export const anomaliesRoute: FastifyPluginAsync = async (fastify) => {
         data: { acknowledged_by },
       });
     }
+
+    logActivity({
+      action:        "anomaly_bulk_acknowledged",
+      entity_type:   "anomaly",
+      operator_name: acknowledged_by,
+      details:       { count: notifications.length },
+    });
 
     return reply.send({
       acknowledged: notifications.length,

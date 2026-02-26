@@ -2,6 +2,7 @@ import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
+import { logActivity } from "../lib/activity.js";
 
 // =============================================================================
 // Routes — Règles d'anomalie (Sprint 14 : CRUD complet admin)
@@ -80,6 +81,15 @@ export const rulesRoute: FastifyPluginAsync = async (fastify) => {
         action:    parsed.data.action    as Prisma.InputJsonValue,
       },
     });
+
+    logActivity({
+      action:        "rule_created",
+      entity_type:   "rule",
+      entity_id:     rule.id,
+      entity_label:  rule.name,
+      operator_name: request.jwtUser.name,
+    });
+
     return reply.code(201).send({ rule });
   });
 
@@ -124,6 +134,15 @@ export const rulesRoute: FastifyPluginAsync = async (fastify) => {
           ...(action    !== undefined ? { action:    action    as Prisma.InputJsonValue } : {}),
         },
       });
+
+      logActivity({
+        action:        "rule_updated",
+        entity_type:   "rule",
+        entity_id:     id,
+        entity_label:  updated.name,
+        operator_name: request.jwtUser.name,
+      });
+
       return reply.send({ rule: updated });
     }
   );
@@ -140,7 +159,7 @@ export const rulesRoute: FastifyPluginAsync = async (fastify) => {
 
       const rule = await prisma.anomalyRule.findUnique({
         where: { id },
-        select: { id: true, _count: { select: { notifications: true } } },
+        select: { id: true, name: true, _count: { select: { notifications: true } } },
       });
       if (!rule) {
         return reply.code(404).send({
@@ -159,6 +178,15 @@ export const rulesRoute: FastifyPluginAsync = async (fastify) => {
       }
 
       await prisma.anomalyRule.delete({ where: { id } });
+
+      logActivity({
+        action:        "rule_deleted",
+        entity_type:   "rule",
+        entity_id:     id,
+        entity_label:  rule.name,
+        operator_name: request.jwtUser.name,
+      });
+
       return reply.code(204).send();
     }
   );

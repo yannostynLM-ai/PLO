@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma.js";
+import { logActivity } from "../lib/activity.js";
 
 // =============================================================================
 // Routes admin — Gestion des utilisateurs opérateurs (Sprint 10)
@@ -91,6 +92,14 @@ export const usersRoute: FastifyPluginAsync = async (fastify) => {
     const user = await prisma.user.create({
       data: { email, name, role, password_hash },
       select: userSelect,
+    });
+
+    logActivity({
+      action:        "user_created",
+      entity_type:   "user",
+      entity_id:     user.id,
+      entity_label:  user.email,
+      operator_name: request.jwtUser.name,
     });
 
     return reply.code(201).send({ user });
@@ -198,6 +207,15 @@ export const usersRoute: FastifyPluginAsync = async (fastify) => {
     }
 
     await prisma.user.delete({ where: { id } });
+
+    logActivity({
+      action:        "user_deleted",
+      entity_type:   "user",
+      entity_id:     id,
+      entity_label:  existing.email,
+      operator_name: request.jwtUser.name,
+    });
+
     return reply.send({ message: "Utilisateur supprimé avec succès" });
   });
 };

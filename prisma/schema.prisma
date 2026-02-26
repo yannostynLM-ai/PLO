@@ -469,6 +469,20 @@ model ProjectNote {
 }
 
 
+// 15. ActivityLog — Journal d'actions opérateur (Sprint 16)
+model ActivityLog {
+  id            String   @id @default(uuid())
+  action        String   // ex: "anomaly_acknowledged", "project_status_changed"
+  entity_type   String   // ex: "anomaly", "project", "rule", "user"
+  entity_id     String?  // UUID de l'entité concernée
+  entity_label  String?  // libellé lisible (customer_id, rule_name…)
+  operator_name String   // jwtUser.name au moment de l'action
+  details       Json?    // payload complémentaire (ex: ancien→nouveau statut)
+  created_at    DateTime @default(now())
+
+  @@map("activity_logs")
+}
+
 // 12. Notification — Notification sortante
 model Notification {
   id              String              @id @default(uuid())

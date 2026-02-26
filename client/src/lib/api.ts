@@ -653,3 +653,41 @@ export function useToggleRule() {
     },
   });
 }
+
+// =============================================================================
+// Activity log (Sprint 16)
+// =============================================================================
+
+export interface ActivityEntry {
+  id:            string;
+  action:        string;
+  entity_type:   string;
+  entity_id:     string | null;
+  entity_label:  string | null;
+  operator_name: string;
+  details:       unknown;
+  created_at:    string;
+}
+
+export interface ActivityFilters {
+  entity_type?: string;
+  operator?:    string;
+  from?:        string;
+  to?:          string;
+  limit?:       number;
+}
+
+export function useActivity(filters?: ActivityFilters) {
+  const params = new URLSearchParams();
+  if (filters?.entity_type) params.set("entity_type", filters.entity_type);
+  if (filters?.operator)    params.set("operator",    filters.operator);
+  if (filters?.from)        params.set("from",        filters.from);
+  if (filters?.to)          params.set("to",          filters.to);
+  if (filters?.limit)       params.set("limit",       String(filters.limit));
+  const qs = params.toString() ? `?${params.toString()}` : "";
+  return useQuery({
+    queryKey: ["activity", filters ?? {}],
+    queryFn:  () => apiFetch<{ entries: ActivityEntry[]; total: number }>(`/api/activity${qs}`),
+    refetchInterval: 30_000,
+  });
+}
