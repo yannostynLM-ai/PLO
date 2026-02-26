@@ -454,6 +454,63 @@ export function useResetPassword() {
   });
 }
 
+// =============================================================================
+// Sprint 12 — Customers hooks
+// =============================================================================
+
+export interface CustomerSummary {
+  customer_id: string;
+  project_count: number;
+  active_project_count: number;
+  anomaly_severity: Severity;
+  active_anomaly_count: number;
+  last_event_at: string | null;
+}
+
+export interface CustomerDetail {
+  customer_id: string;
+  projects: ProjectSummary[];
+  stats: {
+    project_count: number;
+    active_project_count: number;
+    anomaly_severity: Severity;
+    active_anomaly_count: number;
+  };
+}
+
+export function useCustomers(q?: string) {
+  const qs = q ? `?q=${encodeURIComponent(q)}` : "";
+  return useQuery({
+    queryKey: ["customers", q ?? ""],
+    queryFn: () => apiFetch<{ customers: CustomerSummary[] }>(`/api/customers${qs}`),
+    refetchInterval: 30_000,
+  });
+}
+
+export function useCustomer(customerId: string) {
+  return useQuery({
+    queryKey: ["customer", customerId],
+    queryFn: () => apiFetch<CustomerDetail>(`/api/customers/${customerId}`),
+    refetchInterval: 60_000,
+  });
+}
+
+export function useBulkAcknowledge() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ids, acknowledged_by, comment }: { ids: string[]; acknowledged_by: string; comment?: string }) =>
+      apiFetch<{ acknowledged: number; ids: string[] }>("/api/anomalies/bulk-acknowledge", {
+        method: "POST",
+        body: JSON.stringify({ ids, acknowledged_by, comment }),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["anomalies"] });
+      void qc.invalidateQueries({ queryKey: ["projects"] });
+      void qc.invalidateQueries({ queryKey: ["customers"] });
+    },
+  });
+}
+
 export function useToggleRule() {
   const qc = useQueryClient();
   return useMutation({

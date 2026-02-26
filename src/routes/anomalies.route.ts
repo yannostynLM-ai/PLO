@@ -15,6 +15,12 @@ const AcknowledgeBodySchema = z.object({
   comment: z.string().optional(),
 });
 
+const BulkAcknowledgeBodySchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(100),
+  acknowledged_by: z.string().min(1, "acknowledged_by requis"),
+  comment: z.string().optional(),
+});
+
 export const anomaliesRoute: FastifyPluginAsync = async (fastify) => {
   // --------------------------------------------------------------------------
   // GET /api/anomalies
@@ -103,4 +109,50 @@ export const anomaliesRoute: FastifyPluginAsync = async (fastify) => {
       });
     }
   );
+
+  // --------------------------------------------------------------------------
+  // POST /api/anomalies/bulk-acknowledge
+  // --------------------------------------------------------------------------
+  fastify.post("/api/anomalies/bulk-acknowledge", async (request, reply) => {
+    const bodyResult = BulkAcknowledgeBodySchema.safeParse(request.body);
+    if (!bodyResult.success) {
+      return reply.code(422).send({
+        statusCode: 422,
+        error: "Unprocessable Entity",
+        message: "Payload invalide",
+        details: bodyResult.error.flatten(),
+      });
+    }
+
+    const { ids, acknowledged_by } = bodyResult.data;
+
+    const notifications = await prisma.notification.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, event_id: true },
+    });
+
+    if (notifications.length === 0) {
+      return reply.code(404).send({
+        statusCode: 404,
+        error: "Not Found",
+        message: "Aucune notification trouvée",
+      });
+    }
+
+    const eventIds = notifications
+      .map((n) => n.event_id)
+      .filter((id): id is string => id !== null);
+
+    if (eventIds.length > 0) {
+      await prisma.event.updateMany({
+        where: { id: { in: eventIds }, acknowledged_by: null },
+        data: { acknowledged_by },
+      });
+    }
+
+    return reply.send({
+      acknowledged: notifications.length,
+      ids: notifications.map((n) => n.id),
+    });
+  });
 };

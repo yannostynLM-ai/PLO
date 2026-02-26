@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { LayoutList, AlertTriangle, Settings, Activity, BarChart2, LogOut, Users } from "lucide-react";
+import { LayoutList, AlertTriangle, Settings, Activity, BarChart2, LogOut, Users, UserCircle2 } from "lucide-react";
 import { useCurrentUser, useLogout } from "../lib/api.ts";
 import NotificationBell from "./NotificationBell.tsx";
 
@@ -60,6 +60,10 @@ export default function AppLayout() {
             <BarChart2 className="h-4 w-4" />
             Dashboard
           </NavLink>
+          <NavLink to="/customers" className={navClass}>
+            <UserCircle2 className="h-4 w-4" />
+            Clients
+          </NavLink>
           <NavLink to="/" end className={navClass}>
             <LayoutList className="h-4 w-4" />
             Projets
@@ -99,7 +103,7 @@ export default function AppLayout() {
             <LogOut className="h-4 w-4" />
             {logout.isPending ? "Déconnexion…" : "Déconnexion"}
           </button>
-          <p className="text-xs text-slate-600 px-1">v1.0 — Sprint 11</p>
+          <p className="text-xs text-slate-600 px-1">v1.0 — Sprint 12</p>
         </div>
       </aside>
 
