@@ -55,6 +55,8 @@ const ProjectsQuerySchema = z.object({
   type:     z.string().optional(),
   store:    z.string().optional(),
   assignee: z.string().optional(),   // Sprint 18
+  page:     z.coerce.number().int().min(1).default(1),    // Sprint 19
+  limit:    z.coerce.number().int().min(1).max(100).default(20), // Sprint 19
 });
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -199,7 +201,14 @@ export const projectsRoute: FastifyPluginAsync = async (fastify) => {
       ? result.filter((p) => p.anomaly_severity === severity)
       : result;
 
-    return reply.send({ projects: finalResult });
+    // Sprint 19 — pagination JS (après sort sur anomaly_severity calculée en JS)
+    const { page, limit } = parseResult.data;
+    const total = finalResult.length;
+    const pages = Math.max(1, Math.ceil(total / limit));
+    const safePage = Math.min(page, pages);
+    const paginatedResult = finalResult.slice((safePage - 1) * limit, safePage * limit);
+
+    return reply.send({ projects: paginatedResult, total, page: safePage, limit, pages });
   });
 
   // --------------------------------------------------------------------------

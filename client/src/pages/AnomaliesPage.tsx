@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAnomalies, useAcknowledge, useBulkAcknowledge, downloadCsv } from "../lib/api.ts";
 import type { AnomalyNotification, AnomalyFilters } from "../lib/api.ts";
 import SeverityBadge from "../components/SeverityBadge.tsx";
+import Pagination from "../components/Pagination.tsx";
 import { formatDate, projectTypeLabel } from "../lib/utils.ts";
 import { CheckCircle, RefreshCw, CheckSquare, Download, X } from "lucide-react";
 
@@ -120,15 +121,22 @@ export default function AnomaliesPage() {
   const [filters, setFilters] = useState<AnomalyFilters>({});
   const [rawCustomer, setRawCustomer] = useState("");
   const [rawRule, setRawRule] = useState("");
+  const [page, setPage] = useState(1);
+
+  const goToPage = (p: number) => {
+    setPage(p);
+    setFilters((prev) => ({ ...prev, page: p }));
+  };
 
   // Debounce 300ms sur les champs texte
   useEffect(() => {
     const t = setTimeout(() => {
       setFilters((prev) => {
-        const next = { ...prev };
+        const next = { ...prev, page: 1 };
         if (rawCustomer) next.customer_id = rawCustomer; else delete next.customer_id;
         return next;
       });
+      setPage(1);
     }, 300);
     return () => clearTimeout(t);
   }, [rawCustomer]);
@@ -136,10 +144,11 @@ export default function AnomaliesPage() {
   useEffect(() => {
     const t = setTimeout(() => {
       setFilters((prev) => {
-        const next = { ...prev };
+        const next = { ...prev, page: 1 };
         if (rawRule) next.rule_name = rawRule; else delete next.rule_name;
         return next;
       });
+      setPage(1);
     }, 300);
     return () => clearTimeout(t);
   }, [rawRule]);
@@ -155,23 +164,25 @@ export default function AnomaliesPage() {
   // CSV export
   const [isExporting, setIsExporting] = useState(false);
 
-  const anomalies = data?.anomalies ?? [];
+  const { anomalies = [], total = 0, pages = 1 } = data ?? {};
   const unackedAnomalies = anomalies.filter((a) => !a.event?.acknowledged_by);
   const critical = anomalies.filter((a) => a.rule?.severity === "critical");
   const warning  = anomalies.filter((a) => a.rule?.severity === "warning");
   const other    = anomalies.filter((a) => !a.rule || !["critical", "warning"].includes(a.rule.severity));
 
-  const hasFilters = rawCustomer !== "" || rawRule !== "" || Object.keys(filters).length > 0;
+  const hasFilters = rawCustomer !== "" || rawRule !== "" || Object.keys(filters).filter((k) => k !== "page" && k !== "limit").length > 0;
 
   const resetFilters = () => {
-    setFilters({});
+    setFilters({ page: 1 });
     setRawCustomer("");
     setRawRule("");
+    setPage(1);
   };
 
   const setSeverity = (s: string | undefined) => {
+    setPage(1);
     setFilters((prev) => {
-      const next = { ...prev };
+      const next = { ...prev, page: 1 };
       if (s) next.severity = s; else delete next.severity;
       return next;
     });
@@ -226,7 +237,7 @@ export default function AnomaliesPage() {
         <div>
           <h1 className="text-xl font-bold text-slate-900">Anomalies actives</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            {anomalies.length} notification{anomalies.length > 1 ? "s" : ""} (30 derniers jours)
+            {total} notification{total > 1 ? "s" : ""} (30 derniers jours)
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -275,11 +286,11 @@ export default function AnomaliesPage() {
           <input
             type="date"
             value={filters.from ?? ""}
-            onChange={(e) => setFilters((prev) => {
-              const next = { ...prev };
+            onChange={(e) => { setPage(1); setFilters((prev) => {
+              const next = { ...prev, page: 1 };
               if (e.target.value) next.from = e.target.value; else delete next.from;
               return next;
-            })}
+            }); }}
             className="text-xs border border-slate-200 rounded px-2 py-1 text-slate-600 focus:outline-none focus:border-blue-400"
           />
         </div>
@@ -290,11 +301,11 @@ export default function AnomaliesPage() {
           <input
             type="date"
             value={filters.to ?? ""}
-            onChange={(e) => setFilters((prev) => {
-              const next = { ...prev };
+            onChange={(e) => { setPage(1); setFilters((prev) => {
+              const next = { ...prev, page: 1 };
               if (e.target.value) next.to = e.target.value; else delete next.to;
               return next;
-            })}
+            }); }}
             className="text-xs border border-slate-200 rounded px-2 py-1 text-slate-600 focus:outline-none focus:border-blue-400"
           />
         </div>
@@ -389,6 +400,11 @@ export default function AnomaliesPage() {
                 ))}
               </div>
             </section>
+          )}
+          {pages > 1 && (
+            <div className="mt-4">
+              <Pagination page={page} pages={pages} total={total} label="anomalie" onPage={goToPage} />
+            </div>
           )}
         </div>
       )}

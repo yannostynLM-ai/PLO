@@ -20,6 +20,8 @@ const AnomaliesQuerySchema = z.object({
   to:          z.string().optional(),
   customer_id: z.string().optional(),
   rule_name:   z.string().optional(),
+  page:        z.coerce.number().int().min(1).default(1),    // Sprint 19
+  limit:       z.coerce.number().int().min(1).max(100).default(20), // Sprint 19
 });
 
 const AcknowledgeBodySchema = z.object({
@@ -84,17 +86,28 @@ export const anomaliesRoute: FastifyPluginAsync = async (fastify) => {
       });
     }
 
-    const notifications = await prisma.notification.findMany({
-      where: buildWhere(parseResult.data),
-      include: {
-        rule: { select: { id: true, name: true, severity: true, scope: true } },
-        project: { select: { id: true, customer_id: true, project_type: true, status: true } },
-        event: { select: { id: true, event_type: true, acknowledged_by: true, created_at: true } },
-      },
-      orderBy: { sent_at: "desc" },
-    });
+    // Sprint 19 — vraie pagination DB (sort SQL, skip/take + count parallèle)
+    const { page, limit } = parseResult.data;
+    const skip = (page - 1) * limit;
+    const where = buildWhere(parseResult.data);
 
-    return reply.send({ anomalies: notifications });
+    const [notifications, total] = await Promise.all([
+      prisma.notification.findMany({
+        where,
+        include: {
+          rule: { select: { id: true, name: true, severity: true, scope: true } },
+          project: { select: { id: true, customer_id: true, project_type: true, status: true } },
+          event: { select: { id: true, event_type: true, acknowledged_by: true, created_at: true } },
+        },
+        orderBy: { sent_at: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.notification.count({ where }),
+    ]);
+
+    const pages = Math.max(1, Math.ceil(total / limit));
+    return reply.send({ anomalies: notifications, total, page, limit, pages });
   });
 
   // --------------------------------------------------------------------------

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useProjects, useCreateProject, useCurrentUser, downloadCsv } from "../lib/api.ts";
 import type { ProjectFilters } from "../lib/api.ts";
 import SeverityBadge from "../components/SeverityBadge.tsx";
+import Pagination from "../components/Pagination.tsx";
 import {
   formatDate,
   projectStatusLabel,
@@ -182,16 +183,23 @@ export default function ProjectsPage() {
   const [rawStore, setRawStore] = useState("");
   const [myProjects, setMyProjects] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [page, setPage] = useState(1);
+
+  const goToPage = (p: number) => {
+    setPage(p);
+    setFilters((prev) => ({ ...prev, page: p }));
+  };
 
   // Debounce 300ms sur la recherche texte
   useEffect(() => {
     const t = setTimeout(() => {
       setFilters((prev) => {
-        const next = { ...prev };
+        const next = { ...prev, page: 1 };
         if (rawQ) next.q = rawQ;
         else delete next.q;
         return next;
       });
+      setPage(1);
     }, 300);
     return () => clearTimeout(t);
   }, [rawQ]);
@@ -200,11 +208,12 @@ export default function ProjectsPage() {
   useEffect(() => {
     const t = setTimeout(() => {
       setFilters((prev) => {
-        const next = { ...prev };
+        const next = { ...prev, page: 1 };
         if (rawStore) next.store = rawStore;
         else delete next.store;
         return next;
       });
+      setPage(1);
     }, 300);
     return () => clearTimeout(t);
   }, [rawStore]);
@@ -212,8 +221,9 @@ export default function ProjectsPage() {
   const toggleMyProjects = () => {
     const next = !myProjects;
     setMyProjects(next);
+    setPage(1);
     setFilters((prev) => {
-      const updated = { ...prev };
+      const updated = { ...prev, page: 1 };
       if (next && authData?.user?.name) {
         updated.assignee = authData.user.name;
       } else {
@@ -224,9 +234,9 @@ export default function ProjectsPage() {
   };
 
   const { data, isLoading, error, refetch, isFetching } = useProjects(filters);
-  const projects = data?.projects ?? [];
+  const { projects = [], total = 0, pages = 1 } = data ?? {};
 
-  const hasFilters = rawQ !== "" || rawStore !== "" || myProjects || Object.keys(filters).length > 0;
+  const hasFilters = rawQ !== "" || rawStore !== "" || myProjects || Object.keys(filters).filter((k) => k !== "page" && k !== "limit").length > 0;
 
   const [isExporting, setIsExporting] = useState(false);
   const handleExport = async () => {
@@ -250,15 +260,17 @@ export default function ProjectsPage() {
   };
 
   const resetFilters = () => {
-    setFilters({});
+    setFilters({ page: 1 });
     setRawQ("");
     setRawStore("");
     setMyProjects(false);
+    setPage(1);
   };
 
   const setSeverity = (s: string | undefined) => {
+    setPage(1);
     setFilters((prev) => {
-      const next = { ...prev };
+      const next = { ...prev, page: 1 };
       if (s) next.severity = s;
       else delete next.severity;
       return next;
@@ -266,8 +278,9 @@ export default function ProjectsPage() {
   };
 
   const setStatus = (s: string | undefined) => {
+    setPage(1);
     setFilters((prev) => {
-      const next = { ...prev };
+      const next = { ...prev, page: 1 };
       if (s) next.status = s;
       else delete next.status;
       return next;
@@ -275,8 +288,9 @@ export default function ProjectsPage() {
   };
 
   const setType = (t: string | undefined) => {
+    setPage(1);
     setFilters((prev) => {
-      const next = { ...prev };
+      const next = { ...prev, page: 1 };
       if (t) next.type = t;
       else delete next.type;
       return next;
@@ -290,7 +304,7 @@ export default function ProjectsPage() {
         <div>
           <h1 className="text-xl font-bold text-slate-900">Projets</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            {projects.length} projet{projects.length > 1 ? "s" : ""} trouvé{projects.length > 1 ? "s" : ""}
+            {total} projet{total > 1 ? "s" : ""} trouvé{total > 1 ? "s" : ""}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -491,6 +505,9 @@ export default function ProjectsPage() {
               ))}
             </tbody>
           </table>
+          {pages > 1 && (
+            <Pagination page={page} pages={pages} total={total} label="projet" onPage={goToPage} />
+          )}
         </div>
       )}
 

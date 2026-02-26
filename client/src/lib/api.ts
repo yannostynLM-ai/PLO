@@ -8,6 +8,14 @@ import { useState, useEffect, useCallback } from "react";
 export type Severity = "ok" | "warning" | "critical";
 export type AnomalySeverity = "warning" | "critical";
 
+// Sprint 19 — métadonnées de pagination
+export interface Pagination {
+  total: number;
+  page:  number;
+  limit: number;
+  pages: number;
+}
+
 export interface ProjectSummary {
   project_id: string;
   customer_id: string;
@@ -231,6 +239,8 @@ export interface ProjectFilters {
   type?: string;
   store?: string;
   assignee?: string;   // Sprint 18
+  page?:  number;      // Sprint 19
+  limit?: number;      // Sprint 19
 }
 
 export function useProjects(filters?: ProjectFilters) {
@@ -241,11 +251,13 @@ export function useProjects(filters?: ProjectFilters) {
   if (filters?.type)     params.set("type",     filters.type);
   if (filters?.store)    params.set("store",    filters.store);
   if (filters?.assignee) params.set("assignee", filters.assignee);
+  if (filters?.page)     params.set("page",     String(filters.page));
+  if (filters?.limit)    params.set("limit",    String(filters.limit));
   const qs = params.toString() ? `?${params.toString()}` : "";
 
   return useQuery({
     queryKey: ["projects", filters ?? {}],
-    queryFn: () => apiFetch<{ projects: ProjectSummary[] }>(`/api/projects${qs}`),
+    queryFn: () => apiFetch<{ projects: ProjectSummary[] } & Pagination>(`/api/projects${qs}`),
     refetchInterval: 30_000,
   });
 }
@@ -294,6 +306,8 @@ export interface AnomalyFilters {
   to?: string;
   customer_id?: string;
   rule_name?: string;
+  page?:  number;   // Sprint 19
+  limit?: number;   // Sprint 19
 }
 
 export function useAnomalies(filters?: AnomalyFilters) {
@@ -304,11 +318,13 @@ export function useAnomalies(filters?: AnomalyFilters) {
   if (filters?.to)          params.set("to",          filters.to);
   if (filters?.customer_id) params.set("customer_id", filters.customer_id);
   if (filters?.rule_name)   params.set("rule_name",   filters.rule_name);
+  if (filters?.page)        params.set("page",        String(filters.page));
+  if (filters?.limit)       params.set("limit",       String(filters.limit));
   const qs = params.toString() ? `?${params.toString()}` : "";
 
   return useQuery({
     queryKey: ["anomalies", filters ?? {}],
-    queryFn: () => apiFetch<{ anomalies: AnomalyNotification[] }>(`/api/anomalies${qs}`),
+    queryFn: () => apiFetch<{ anomalies: AnomalyNotification[] } & Pagination>(`/api/anomalies${qs}`),
     refetchInterval: 30_000,
   });
 }
