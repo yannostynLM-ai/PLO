@@ -12,6 +12,7 @@ import { anomaliesRoute } from "./routes/anomalies.route.js";
 import { rulesRoute } from "./routes/rules.route.js";
 import { statsRoute } from "./routes/stats.route.js";
 import { trackingRoute } from "./routes/tracking.route.js";
+import { installerRoute } from "./routes/installer.route.js";
 import { riskRoute } from "./routes/risk.route.js";
 import { usersRoute } from "./routes/users.route.js";
 import { sseRoute } from "./routes/sse.route.js";
@@ -61,6 +62,8 @@ export async function buildServer() {
   // ── Routes publiques — sans authentification ───────────────────────────────
   // Portail client suivi (token URL) — reste 100% public
   await fastify.register(trackingRoute);
+  // Portail installateur (token URL) — Sprint 22
+  await fastify.register(installerRoute);
 
   // Login / logout / me
   await fastify.register(authRoute);

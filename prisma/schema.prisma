@@ -341,6 +341,7 @@ model Installation {
   technician_id        String?
   technician_name      String?
   wfm_job_ref          String?
+  installer_token      String?            @unique      // Token URL portail installateur (Sprint 22)
   orders_prerequisite  String[]           @default([]) // order_id requis avant intervention
   started_at           DateTime?
   completed_at         DateTime?

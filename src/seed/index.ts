@@ -1427,7 +1427,7 @@ async function seedMartin(p: typeof prisma, createStep: Function) {
 
   await p.lastMileDelivery.create({ data: { id: M.lastMile, project_id: M.project, consolidation_id: M.consolidation, tms_delivery_ref: "TMS-LM-MARTIN-001", carrier: "PROPRE", status: "delivered", delivery_address: addr, scheduled_date: daysAgo(8), scheduled_slot: { start: "08:00", end: "12:00" }, is_partial: false, delivered_at: daysAgo(8), pod_url: "https://pod.carrier.example/martin-2025" } });
 
-  await p.installation.create({ data: { id: M.installation, project_id: M.project, status: "completed", installation_address: addr, scheduled_date: daysAgo(3), scheduled_slot: { start: "08:00", end: "17:00" }, technician_id: "TECH-IDF-007", technician_name: "Jean-Pierre Lavigne", wfm_job_ref: "WFM-JOB-MARTIN-001", orders_prerequisite: [M.orderA, M.orderB], started_at: daysAgo(3), completed_at: daysAgo(2), report: { technician_notes: "Pose conforme au plan. Raccords plomberie OK.", customer_signature: { signed: true, signed_at: daysAgo(2).toISOString() }, photos: 5, issues: [] } } });
+  await p.installation.create({ data: { id: M.installation, project_id: M.project, status: "completed", installation_address: addr, scheduled_date: daysAgo(3), scheduled_slot: { start: "08:00", end: "17:00" }, technician_id: "TECH-IDF-007", technician_name: "Jean-Pierre Lavigne", wfm_job_ref: "WFM-JOB-MARTIN-001", installer_token: "install-martin-2025-token", orders_prerequisite: [M.orderA, M.orderB], started_at: daysAgo(3), completed_at: daysAgo(2), report: { technician_notes: "Pose conforme au plan. Raccords plomberie OK.", customer_signature: { signed: true, signed_at: daysAgo(2).toISOString() }, photos: 5, issues: [] } } });
 
   // Steps
   await createStep({ id: M.stepProjInspiration, project_id: M.project, step_type: "inspiration", status: "completed", completed_at: daysAgo(50) });
@@ -1605,7 +1605,7 @@ async function seedRenaud(p: typeof prisma, createStep: Function) {
 
   await p.lastMileDelivery.create({ data: { id: R.lastMile, project_id: R.project, consolidation_id: R.consolidation, tms_delivery_ref: "TMS-LM-RENAUD-001", carrier: "DACHSER", status: "partial_delivered", delivery_address: addr, scheduled_date: daysAgo(1), scheduled_slot: { start: "14:00", end: "18:00" }, is_partial: true, missing_order_ids: [R.orderB] } });
 
-  await p.installation.create({ data: { id: R.installation, project_id: R.project, status: "scheduled", installation_address: addr, scheduled_date: daysFromNow(3), scheduled_slot: { start: "08:00", end: "17:00" }, technician_id: "TECH-AQI-012", technician_name: "Antoine Duval", wfm_job_ref: "WFM-JOB-RENAUD-001", orders_prerequisite: [R.orderA, R.orderB] } });
+  await p.installation.create({ data: { id: R.installation, project_id: R.project, status: "scheduled", installation_address: addr, scheduled_date: daysFromNow(3), scheduled_slot: { start: "08:00", end: "17:00" }, technician_id: "TECH-AQI-012", technician_name: "Antoine Duval", wfm_job_ref: "WFM-JOB-RENAUD-001", installer_token: "install-renaud-2025-token", orders_prerequisite: [R.orderA, R.orderB] } });
 
   // Steps
   await createStep({ id: R.stepProjInspiration, project_id: R.project, step_type: "inspiration", status: "completed", completed_at: daysAgo(45) });
@@ -1679,7 +1679,7 @@ async function seedMoreau(p: typeof prisma, createStep: Function) {
 
   await p.lastMileDelivery.create({ data: { id: M.lastMile, project_id: M.project, consolidation_id: M.consolidation, tms_delivery_ref: "TMS-LM-MOREAU-001", carrier: "XPO LOGISTICS", status: "delivered", delivery_address: addr, scheduled_date: daysAgo(52), scheduled_slot: { start: "14:00", end: "18:00" }, is_partial: false, delivered_at: daysAgo(52), pod_url: "https://pod.carrier.example/moreau-2024" } });
 
-  await p.installation.create({ data: { id: M.installation, project_id: M.project, status: "completed", installation_address: addr, scheduled_date: daysAgo(48), scheduled_slot: { start: "08:00", end: "17:00" }, technician_id: "TECH-PACA-003", technician_name: "Luc Bergeron", wfm_job_ref: "WFM-JOB-MOREAU-001", orders_prerequisite: [M.orderA, M.orderB], started_at: daysAgo(48), completed_at: daysAgo(46), report: { technician_notes: "Installation complète cuisine. Réglages portes et tiroirs effectués.", customer_signature: { signed: true, signed_at: daysAgo(46).toISOString() }, photos: 8, issues: [] } } });
+  await p.installation.create({ data: { id: M.installation, project_id: M.project, status: "completed", installation_address: addr, scheduled_date: daysAgo(48), scheduled_slot: { start: "08:00", end: "17:00" }, technician_id: "TECH-PACA-003", technician_name: "Luc Bergeron", wfm_job_ref: "WFM-JOB-MOREAU-001", installer_token: "install-moreau-2024-token", orders_prerequisite: [M.orderA, M.orderB], started_at: daysAgo(48), completed_at: daysAgo(46), report: { technician_notes: "Installation complète cuisine. Réglages portes et tiroirs effectués.", customer_signature: { signed: true, signed_at: daysAgo(46).toISOString() }, photos: 8, issues: [] } } });
 
   // Steps
   await createStep({ id: M.stepProjInspiration, project_id: M.project, step_type: "inspiration", status: "completed", completed_at: daysAgo(90) });
