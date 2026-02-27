@@ -2,9 +2,9 @@
 # PLO — Terraform Outputs
 # =============================================================================
 
-output "cloud_run_url" {
-  description = "Public URL of the PLO Cloud Run service"
-  value       = google_cloud_run_v2_service.plo.uri
+output "turbine_endpoint" {
+  description = "Turbine component endpoint URL"
+  value       = turbine_component.plo.endpoint
 }
 
 output "db_connection_name" {
@@ -28,7 +28,12 @@ output "redis_port" {
   value       = google_redis_instance.plo.port
 }
 
-output "artifact_registry" {
-  description = "Artifact Registry Docker repository URL"
-  value       = "${var.region}-docker.pkg.dev/${var.project_id}/plo"
+output "environment" {
+  description = "Current deployment environment"
+  value       = var.env
+}
+
+output "gcp_project" {
+  description = "GCP project (from Vault)"
+  value       = local.gcp_project
 }
