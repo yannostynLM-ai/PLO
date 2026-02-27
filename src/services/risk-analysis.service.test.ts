@@ -422,4 +422,35 @@ describe("analyzeProjectRisk", () => {
     expect(result!.risk_score).toBeGreaterThanOrEqual(0);
     expect(result!.level).toBe("critical");
   });
+
+  // --------------------------------------------------------------------------
+  // 13. Handles project with no steps (completedStepsRate defaults to 1)
+  // --------------------------------------------------------------------------
+  it("handles project with no steps (completedStepsRate defaults to 1)", async () => {
+    const recentDate = new Date();
+    recentDate.setDate(recentDate.getDate() - 10);
+    mockFindUnique.mockResolvedValue(
+      makeProject({
+        id: "proj-no-steps",
+        created_at: recentDate,
+        orders: [
+          {
+            id: "o1",
+            status: "confirmed",
+            promised_delivery_date: null,
+            lines: [],
+            shipments: [],
+            steps: [],
+          },
+        ],
+        steps: [],
+      }),
+    );
+
+    const result = await analyzeProjectRisk("proj-no-steps");
+
+    expect(result).not.toBeNull();
+    expect(result!.risk_score).toBeGreaterThanOrEqual(0);
+    expect(result!.level).toBeDefined();
+  });
 });

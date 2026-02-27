@@ -257,6 +257,39 @@ describe("Customers route", () => {
       expect(body.customers[0].active_anomaly_count).toBe(2);
     });
 
+    it("upgrades severity when second project has higher severity", async () => {
+      mockPrisma.project.findMany.mockResolvedValue([
+        buildProjectRow({
+          id: "proj-ok",
+          customer_id: "CUST-UPGRADE",
+          notifications: [],
+        }),
+        buildProjectRow({
+          id: "proj-crit",
+          customer_id: "CUST-UPGRADE",
+          notifications: [
+            {
+              sent_at: new Date(),
+              status: "sent",
+              rule: { severity: "critical" },
+              event: { acknowledged_by: null, created_at: new Date() },
+            },
+          ],
+        }),
+      ]);
+
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/customers",
+        headers: { cookie },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.customers.length).toBe(1);
+      expect(body.customers[0].anomaly_severity).toBe("critical");
+    });
+
     it("returns 401 without JWT cookie", async () => {
       const res = await app.inject({
         method: "GET",
@@ -458,6 +491,42 @@ describe("Customers route", () => {
       expect(body.stats.active_project_count).toBe(1);
       expect(body.stats.anomaly_severity).toBe("critical");
       expect(body.stats.active_anomaly_count).toBe(2);
+    });
+
+    it("sorts project with anomaly before project without in detail view", async () => {
+      mockPrisma.project.findMany.mockResolvedValue([
+        buildProjectRow({
+          id: "proj-no-anomaly",
+          customer_id: "CUST-MIX",
+          notifications: [],
+          events: [{ created_at: new Date() }],
+        }),
+        buildProjectRow({
+          id: "proj-with-anomaly",
+          customer_id: "CUST-MIX",
+          notifications: [
+            {
+              sent_at: new Date("2026-01-15T00:00:00Z"),
+              status: "sent",
+              rule: { severity: "warning" },
+              event: { acknowledged_by: null, created_at: new Date("2026-01-15T00:00:00Z") },
+            },
+          ],
+          events: [{ created_at: new Date() }],
+        }),
+      ]);
+
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/customers/CUST-MIX",
+        headers: { cookie },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      // Project with anomaly should come first (oldest_unack_anomaly_at is set)
+      expect(body.projects[0].project_id).toBe("proj-with-anomaly");
+      expect(body.projects[1].project_id).toBe("proj-no-anomaly");
     });
 
     it("sorts projects by oldest unacknowledged anomaly date", async () => {

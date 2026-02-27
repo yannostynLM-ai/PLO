@@ -376,4 +376,14 @@ describe("handleScheduledRuleResult", () => {
     // Broadcasts SSE
     expect(mockBroadcast).toHaveBeenCalledOnce();
   });
+
+  it("returns early when recent notification exists (dedup)", async () => {
+    mockPrisma.notification.findFirst.mockResolvedValue({ id: "recent-notif" });
+
+    await handleScheduledRuleResult(makeRuleResult());
+
+    expect(mockPrisma.notification.create).not.toHaveBeenCalled();
+    expect(mockSendEmail).not.toHaveBeenCalled();
+    expect(mockBroadcast).not.toHaveBeenCalled();
+  });
 });

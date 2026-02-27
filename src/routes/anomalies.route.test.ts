@@ -123,6 +123,18 @@ describe("GET /api/anomalies", () => {
     expect(res.statusCode).toBe(401);
   });
 
+  it("returns 422 when severity query param is invalid", async () => {
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/anomalies?severity=invalid",
+      headers: { cookie },
+    });
+
+    expect(res.statusCode).toBe(422);
+    expect(res.json().error).toBe("Unprocessable Entity");
+    expect(mockPrisma.notification.findMany).not.toHaveBeenCalled();
+  });
+
   it("passes page and limit parameters to prisma query", async () => {
     mockPrisma.notification.findMany.mockResolvedValueOnce([]);
     mockPrisma.notification.count.mockResolvedValueOnce(0);
@@ -354,6 +366,45 @@ describe("GET /api/anomalies/export.csv", () => {
     expect(dataRow).toContain("critical");
     expect(dataRow).toContain("ANO-01");
     expect(dataRow).toContain("CLI-001");
+  });
+
+  it("returns 422 when severity query param is invalid", async () => {
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/anomalies/export.csv?severity=invalid",
+      headers: { cookie },
+    });
+
+    expect(res.statusCode).toBe(422);
+    expect(res.json().error).toBe("Unprocessable Entity");
+  });
+
+  it("escapes commas and quotes in CSV fields", async () => {
+    mockPrisma.notification.findMany.mockResolvedValue([
+      {
+        id: "n1",
+        status: "sent",
+        channel: "email",
+        recipient: "user@test.local",
+        sent_at: new Date("2026-02-20T10:00:00Z"),
+        created_at: new Date("2026-02-20T10:00:00Z"),
+        crm_ticket_ref: null,
+        escalated_at: null,
+        rule: { id: "r1", name: 'Rule with "quotes" and, commas', severity: "warning", scope: "order" },
+        project: { id: "p1", customer_id: "CUST-001" },
+        event: { id: "e1", event_type: "order.confirmed", acknowledged_by: null },
+      },
+    ]);
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/anomalies/export.csv",
+      headers: { cookie },
+    });
+
+    expect(res.statusCode).toBe(200);
+    // The rule name contains commas and quotes, so it should be escaped in CSV
+    expect(res.body).toContain('""quotes""');
   });
 
   it("handles null fields with empty strings in CSV", async () => {

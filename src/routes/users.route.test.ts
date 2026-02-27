@@ -326,6 +326,19 @@ describe("Users route", () => {
       expect(res.json().error).toBe("Not Found");
       expect(mockPrisma.user.update).not.toHaveBeenCalled();
     });
+
+    it("returns 422 when role is invalid", async () => {
+      const res = await app.inject({
+        method: "PATCH",
+        url: "/api/users/user-99",
+        headers: { cookie },
+        payload: { role: "superuser" },
+      });
+
+      expect(res.statusCode).toBe(422);
+      expect(res.json().error).toBe("Unprocessable Entity");
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+    });
   });
 
   // ========================================================================

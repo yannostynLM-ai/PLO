@@ -257,6 +257,19 @@ describe("Rules route", () => {
       expect(res.json().error).toBe("Not Found");
       expect(mockPrisma.anomalyRule.update).not.toHaveBeenCalled();
     });
+
+    it("returns 422 when body contains invalid scope", async () => {
+      const res = await app.inject({
+        method: "PATCH",
+        url: "/api/rules/rule-1",
+        headers: { cookie },
+        payload: { scope: "invalid_scope" },
+      });
+
+      expect(res.statusCode).toBe(422);
+      expect(res.json().error).toBe("Unprocessable Entity");
+      expect(mockPrisma.anomalyRule.update).not.toHaveBeenCalled();
+    });
   });
 
   // ========================================================================

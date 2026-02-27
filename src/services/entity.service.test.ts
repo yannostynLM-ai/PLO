@@ -825,4 +825,85 @@ describe("applyEntityUpdates", () => {
       data: expect.objectContaining({ status: "completed" }),
     });
   });
+
+  // ---- maybeAutoCloseProject early-return branch coverage ----
+
+  it("installation.completed does nothing when project not found", async () => {
+    mockProject.findUnique.mockResolvedValue(null);
+
+    await applyEntityUpdates({
+      event_type: "installation.completed",
+      project_id: "proj-missing",
+      order_id: null,
+      installation_id: null,
+      payload: {},
+    });
+
+    expect(mockProject.update).not.toHaveBeenCalled();
+  });
+
+  it("installation.completed does nothing when project already completed", async () => {
+    mockProject.findUnique.mockResolvedValue({
+      id: "proj-done",
+      status: "completed",
+      customer_id: "CUST-1",
+      last_mile: { status: "delivered" },
+      installation: { status: "completed" },
+    });
+
+    await applyEntityUpdates({
+      event_type: "installation.completed",
+      project_id: "proj-done",
+      order_id: null,
+      installation_id: null,
+      payload: {},
+    });
+
+    expect(mockProject.update).not.toHaveBeenCalled();
+  });
+
+  it("installation.completed does nothing when lastMile not delivered", async () => {
+    mockProject.findUnique.mockResolvedValue({
+      id: "proj-1",
+      status: "active",
+      customer_id: "CUST-1",
+      last_mile: { status: "in_transit" },
+      installation: { status: "completed" },
+    });
+
+    await applyEntityUpdates({
+      event_type: "installation.completed",
+      project_id: "proj-1",
+      order_id: null,
+      installation_id: null,
+      payload: {},
+    });
+
+    expect(mockProject.update).not.toHaveBeenCalled();
+  });
+
+  it("lastmile.partial_delivered triggers auto-close when installation done", async () => {
+    mockLastMile.updateMany.mockResolvedValue({ count: 1 });
+    mockProject.findUnique.mockResolvedValue({
+      id: "proj-1",
+      status: "active",
+      customer_id: "CUST-1",
+      last_mile: { status: "partial_delivered" },
+      installation: null,
+    });
+    mockProject.update.mockResolvedValue({});
+
+    await applyEntityUpdates({
+      event_type: "lastmile.partial_delivered",
+      project_id: "proj-1",
+      order_id: null,
+      installation_id: null,
+      payload: {},
+    });
+
+    expect(mockProject.update).toHaveBeenCalledWith({
+      where: { id: "proj-1" },
+      data: expect.objectContaining({ status: "completed" }),
+    });
+  });
 });

@@ -188,6 +188,44 @@ describe("evaluateRealTimeRules", () => {
     expect(mockRule.evaluate).not.toHaveBeenCalled();
     expect(mockHandleRuleResult).not.toHaveBeenCalled();
   });
+
+  // --------------------------------------------------------------------------
+  // 6. Loads order from DB when orderId is provided
+  // --------------------------------------------------------------------------
+  it("loads order from DB when orderId is provided", async () => {
+    mockEventFindUnique.mockResolvedValue(fakeEvent);
+    mockProjectFindUnique.mockResolvedValue(fakeProject);
+    const mockOrderFindUnique = prisma.order.findUnique as ReturnType<typeof vi.fn>;
+    mockOrderFindUnique.mockResolvedValue({ id: "ord-1", status: "confirmed" });
+    (mockRule.evaluate as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+
+    await evaluateRealTimeRules({
+      ...baseParams,
+      orderId: "ord-1",
+    });
+
+    expect(mockOrderFindUnique).toHaveBeenCalledWith({ where: { id: "ord-1" } });
+    expect(mockRule.evaluate).toHaveBeenCalledOnce();
+  });
+
+  // --------------------------------------------------------------------------
+  // 7. Loads installation from DB when installationId is provided
+  // --------------------------------------------------------------------------
+  it("loads installation from DB when installationId is provided", async () => {
+    mockEventFindUnique.mockResolvedValue(fakeEvent);
+    mockProjectFindUnique.mockResolvedValue(fakeProject);
+    const mockInstallationFindUnique = prisma.installation.findUnique as ReturnType<typeof vi.fn>;
+    mockInstallationFindUnique.mockResolvedValue({ id: "inst-1", status: "scheduled" });
+    (mockRule.evaluate as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+
+    await evaluateRealTimeRules({
+      ...baseParams,
+      installationId: "inst-1",
+    });
+
+    expect(mockInstallationFindUnique).toHaveBeenCalledWith({ where: { id: "inst-1" } });
+    expect(mockRule.evaluate).toHaveBeenCalledOnce();
+  });
 });
 
 // =============================================================================

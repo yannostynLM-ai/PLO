@@ -166,6 +166,70 @@ describe("Projects route", () => {
       expect(callArgs.where.status).toBe("active");
     });
 
+    it("sorts projects by oldest_unack_anomaly_at when severity is equal", async () => {
+      const olderAnomaly = new Date("2026-01-10T00:00:00Z");
+      const newerAnomaly = new Date("2026-02-20T00:00:00Z");
+
+      const buildFakeProjectRow = (overrides: Record<string, unknown> = {}) => ({
+        id: "proj-1",
+        customer_id: "CUST-001",
+        project_type: "kitchen",
+        status: "active",
+        channel_origin: "store",
+        store_id: "STORE-A",
+        assigned_to: null,
+        created_at: new Date("2025-10-01"),
+        updated_at: new Date("2025-10-02"),
+        notifications: [],
+        events: [],
+        ...overrides,
+      });
+
+      mockPrisma.project.findMany.mockResolvedValue([
+        buildFakeProjectRow({
+          id: "proj-newer",
+          customer_id: "CUST-NEWER",
+          notifications: [
+            {
+              status: "sent",
+              sent_at: newerAnomaly,
+              rule: { severity: "warning" },
+              event: { acknowledged_by: null, created_at: newerAnomaly },
+            },
+          ],
+        }),
+        buildFakeProjectRow({
+          id: "proj-older",
+          customer_id: "CUST-OLDER",
+          notifications: [
+            {
+              status: "sent",
+              sent_at: olderAnomaly,
+              rule: { severity: "warning" },
+              event: { acknowledged_by: null, created_at: olderAnomaly },
+            },
+          ],
+        }),
+        buildFakeProjectRow({
+          id: "proj-none",
+          customer_id: "CUST-NONE",
+          notifications: [],
+        }),
+      ]);
+
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/projects?severity=warning",
+        headers: { cookie },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      // Projects with anomalies should come before those without
+      const ids = body.projects.map((p: { project_id: string }) => p.project_id);
+      expect(ids.indexOf("proj-older")).toBeLessThan(ids.indexOf("proj-newer"));
+    });
+
     it("filters by calculated severity=critical client-side", async () => {
       const criticalProject = buildFakeProjectRow({
         notifications: [
@@ -232,6 +296,51 @@ describe("Projects route", () => {
       // First line should be the CSV header
       const lines = res.body.split("\n");
       expect(lines[0]).toContain("Client");
+    });
+
+    it("returns 422 when limit query param is invalid", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/projects/export.csv?limit=0",
+        headers: { cookie },
+      });
+
+      expect(res.statusCode).toBe(422);
+      expect(res.json().error).toBe("Unprocessable Entity");
+    });
+
+    it("includes warning severity in CSV output", async () => {
+      mockPrisma.project.findMany.mockResolvedValue([
+        {
+          id: "proj-w",
+          customer_id: "CUST-W",
+          project_type: "kitchen",
+          status: "active",
+          channel_origin: "store",
+          store_id: "S1",
+          assigned_to: null,
+          created_at: new Date("2025-10-01"),
+          updated_at: new Date("2025-10-02"),
+          notifications: [
+            {
+              status: "sent",
+              sent_at: new Date(),
+              rule: { severity: "warning" },
+              event: { acknowledged_by: null, created_at: new Date() },
+            },
+          ],
+          events: [],
+        },
+      ]);
+
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/projects/export.csv",
+        headers: { cookie },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toContain("warning");
     });
   });
 
