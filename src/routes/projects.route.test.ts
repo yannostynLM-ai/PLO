@@ -396,6 +396,78 @@ describe("Projects route", () => {
   });
 
   // ========================================================================
+  // POST /api/projects/:id/notes
+  // ========================================================================
+
+  describe("POST /api/projects/:id/notes", () => {
+    it("returns 201 and creates a note with valid payload", async () => {
+      mockPrisma.project.findUnique.mockResolvedValueOnce({
+        id: "proj-1",
+        customer_id: "CUST-001",
+      });
+      mockPrisma.projectNote.create.mockResolvedValueOnce({
+        id: "note-1",
+        content: "Test note",
+        author_name: "Admin",
+        project_id: "proj-1",
+        created_at: new Date(),
+      });
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/projects/proj-1/notes",
+        headers: { cookie },
+        payload: { content: "Test note", author_name: "Admin" },
+      });
+
+      expect(res.statusCode).toBe(201);
+      const body = res.json();
+      expect(body.note).toBeDefined();
+      expect(body.note.id).toBe("note-1");
+      expect(mockPrisma.projectNote.create).toHaveBeenCalledOnce();
+    });
+
+    it("returns 404 when project is not found", async () => {
+      mockPrisma.project.findUnique.mockResolvedValueOnce(null);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/projects/unknown-id/notes",
+        headers: { cookie },
+        payload: { content: "Test note", author_name: "Admin" },
+      });
+
+      expect(res.statusCode).toBe(404);
+      expect(res.json().error).toBe("Not Found");
+      expect(mockPrisma.projectNote.create).not.toHaveBeenCalled();
+    });
+
+    it("returns 422 when content is missing", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/projects/proj-1/notes",
+        headers: { cookie },
+        payload: { author_name: "Admin" },
+      });
+
+      expect(res.statusCode).toBe(422);
+      expect(res.json().error).toBe("Unprocessable Entity");
+    });
+
+    it("returns 422 when author_name is missing", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/projects/proj-1/notes",
+        headers: { cookie },
+        payload: { content: "Some note" },
+      });
+
+      expect(res.statusCode).toBe(422);
+      expect(res.json().error).toBe("Unprocessable Entity");
+    });
+  });
+
+  // ========================================================================
   // Authentication guard
   // ========================================================================
 

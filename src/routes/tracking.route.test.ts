@@ -194,4 +194,164 @@ describe("GET /api/public/tracking/:token", () => {
     expect(installMilestone).toBeDefined();
     expect(installMilestone.status).toBe("in_progress");
   });
+
+  it("milestone shows partial_approved consolidation as completed", async () => {
+    mockPrisma.project.findUnique.mockResolvedValue({
+      id: "proj-1",
+      customer_id: "CLI-001",
+      project_type: "kitchen",
+      status: "active",
+      created_at: new Date(),
+      tracking_token: "partial-approved-token",
+      orders: [],
+      consolidation: {
+        id: "cons-1",
+        status: "partial_approved",
+        orders_arrived: ["ord-1"],
+        orders_required: ["ord-1", "ord-2"],
+        estimated_complete_date: new Date("2026-03-01"),
+        partial_delivery_approved: true,
+      },
+      last_mile: null,
+      installation: null,
+    });
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/public/tracking/partial-approved-token",
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    const consolMilestone = body.milestones.find((m: any) => m.key === "consolidation");
+    expect(consolMilestone).toBeDefined();
+    expect(consolMilestone.status).toBe("completed");
+  });
+
+  it("handles shipments with null estimated_arrival without error", async () => {
+    mockPrisma.project.findUnique.mockResolvedValue({
+      id: "proj-1",
+      customer_id: "CLI-001",
+      project_type: "kitchen",
+      status: "active",
+      created_at: new Date(),
+      tracking_token: "null-eta-token",
+      orders: [
+        {
+          id: "ord-1",
+          erp_order_ref: "ERP-1",
+          status: "confirmed",
+          promised_delivery_date: null,
+          promised_installation_date: null,
+          created_at: new Date(),
+          lines: [{ id: "line-1" }],
+          shipments: [
+            {
+              id: "ship-1",
+              carrier: "DHL",
+              carrier_tracking_ref: "DHL-001",
+              status: "in_transit",
+              estimated_arrival: null,
+              actual_arrival: null,
+            },
+            {
+              id: "ship-2",
+              carrier: "FedEx",
+              carrier_tracking_ref: "FDX-001",
+              status: "dispatched",
+              estimated_arrival: new Date("2026-03-10"),
+              actual_arrival: null,
+            },
+          ],
+        },
+      ],
+      consolidation: null,
+      last_mile: null,
+      installation: null,
+    });
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/public/tracking/null-eta-token",
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    // Shipment milestone should exist and not error out
+    const shipmentMilestone = body.milestones.find((m: any) => m.key === "shipment");
+    expect(shipmentMilestone).toBeDefined();
+    expect(shipmentMilestone.status).toBe("in_progress");
+  });
+
+  it("includes last_mile milestone with scheduled_date as in_progress", async () => {
+    mockPrisma.project.findUnique.mockResolvedValue({
+      id: "proj-1",
+      customer_id: "CLI-001",
+      project_type: "kitchen",
+      status: "active",
+      created_at: new Date(),
+      tracking_token: "last-mile-token",
+      orders: [],
+      consolidation: null,
+      last_mile: {
+        id: "lm-1",
+        status: "scheduled",
+        scheduled_date: new Date("2026-03-15"),
+        scheduled_slot: "morning",
+        delivered_at: null,
+        is_partial: false,
+      },
+      installation: null,
+    });
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/public/tracking/last-mile-token",
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    const deliveryMilestone = body.milestones.find((m: any) => m.key === "delivery");
+    expect(deliveryMilestone).toBeDefined();
+    expect(deliveryMilestone.status).toBe("in_progress");
+    expect(deliveryMilestone.date).toBeTruthy();
+  });
+
+  it("includes installation milestone with scheduled_date", async () => {
+    mockPrisma.project.findUnique.mockResolvedValue({
+      id: "proj-1",
+      customer_id: "CLI-001",
+      project_type: "kitchen",
+      status: "active",
+      created_at: new Date(),
+      tracking_token: "install-scheduled-token",
+      orders: [],
+      consolidation: null,
+      last_mile: null,
+      installation: {
+        id: "inst-1",
+        status: "scheduled",
+        scheduled_date: new Date("2026-04-01"),
+        scheduled_slot: "afternoon",
+        technician_name: "Pierre",
+        completed_at: null,
+      },
+    });
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/public/tracking/install-scheduled-token",
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    const installMilestone = body.milestones.find((m: any) => m.key === "installation");
+    expect(installMilestone).toBeDefined();
+    expect(installMilestone.status).toBe("in_progress");
+    expect(installMilestone.date).toBeTruthy();
+    // Verify installation details in the response
+    expect(body.installation).toBeDefined();
+    expect(body.installation.scheduled_date).toBeTruthy();
+    expect(body.installation.technician_name).toBe("Pierre");
+  });
 });

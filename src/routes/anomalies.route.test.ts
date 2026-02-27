@@ -122,6 +122,23 @@ describe("GET /api/anomalies", () => {
 
     expect(res.statusCode).toBe(401);
   });
+
+  it("passes page and limit parameters to prisma query", async () => {
+    mockPrisma.notification.findMany.mockResolvedValueOnce([]);
+    mockPrisma.notification.count.mockResolvedValueOnce(0);
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/anomalies?page=2&limit=10",
+      headers: { cookie },
+    });
+
+    expect(res.statusCode).toBe(200);
+
+    const findManyCall = mockPrisma.notification.findMany.mock.calls[0][0];
+    expect(findManyCall.skip).toBe(10);
+    expect(findManyCall.take).toBe(10);
+  });
 });
 
 // =============================================================================
@@ -273,5 +290,101 @@ describe("POST /api/anomalies/bulk-acknowledge", () => {
 
     expect(res.statusCode).toBe(404);
     expect(res.json().message).toBe("Aucune notification trouvée");
+  });
+});
+
+// =============================================================================
+// GET /api/anomalies/export.csv
+// =============================================================================
+
+describe("GET /api/anomalies/export.csv", () => {
+  const csvNotification = {
+    id: "n-1",
+    sent_at: new Date("2026-01-15"),
+    status: "sent",
+    recipient: "user@test.local",
+    escalated_at: null,
+    crm_ticket_ref: null,
+    rule: { name: "ANO-01", severity: "critical", scope: "project" },
+    project: { customer_id: "CLI-001", project_type: "kitchen" },
+    event: { event_type: "order.confirmed", acknowledged_by: null },
+  };
+
+  it("returns 200 with CSV content-type", async () => {
+    mockPrisma.notification.findMany.mockResolvedValueOnce([csvNotification]);
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/anomalies/export.csv",
+      headers: { cookie },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.headers["content-type"]).toContain("text/csv");
+    expect(res.headers["content-disposition"]).toContain("attachment");
+  });
+
+  it("CSV header contains expected columns", async () => {
+    mockPrisma.notification.findMany.mockResolvedValueOnce([csvNotification]);
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/anomalies/export.csv",
+      headers: { cookie },
+    });
+
+    const lines = res.body.split("\n");
+    expect(lines[0]).toContain("Date envoi");
+    expect(lines[0]).toContain("Sévérité");
+    expect(lines[0]).toContain("Règle");
+    expect(lines[0]).toContain("Client");
+  });
+
+  it("CSV row contains notification data", async () => {
+    mockPrisma.notification.findMany.mockResolvedValueOnce([csvNotification]);
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/anomalies/export.csv",
+      headers: { cookie },
+    });
+
+    const lines = res.body.split("\n");
+    const dataRow = lines[1];
+    expect(dataRow).toContain("critical");
+    expect(dataRow).toContain("ANO-01");
+    expect(dataRow).toContain("CLI-001");
+  });
+
+  it("handles null fields with empty strings in CSV", async () => {
+    const nullNotification = {
+      id: "n-2",
+      sent_at: null,
+      status: "sent",
+      recipient: "user@test.local",
+      escalated_at: null,
+      crm_ticket_ref: null,
+      rule: null,
+      project: null,
+      event: null,
+    };
+    mockPrisma.notification.findMany.mockResolvedValueOnce([nullNotification]);
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/anomalies/export.csv",
+      headers: { cookie },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const lines = res.body.split("\n");
+    const dataRow = lines[1];
+    // Null fields should produce empty strings — multiple consecutive commas
+    // The row should still contain the recipient and status
+    expect(dataRow).toContain("user@test.local");
+    expect(dataRow).toContain("sent");
+    // severity, rule name, scope, customer_id, project_type, event_type, acknowledged_by
+    // should all be empty — verify several consecutive empty values
+    expect(dataRow).toContain(",,");
   });
 });
