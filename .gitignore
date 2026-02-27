@@ -14,3 +14,13 @@ Thumbs.db
 *.log
 npm-debug.log*
 pnpm-debug.log*
+
+# Terraform
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.backup
+infra/terraform.tfvars
+infra/.terraform.lock.hcl
+
+# Docker
+coverage/

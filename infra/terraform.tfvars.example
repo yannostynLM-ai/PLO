@@ -1,0 +1,25 @@
+# =============================================================================
+# PLO — Terraform Variables (copy to terraform.tfvars and fill in)
+# =============================================================================
+
+project_id = "my-gcp-project-id"
+region     = "europe-west1"
+db_tier    = "db-f1-micro"
+
+# ── Secrets (change all values!) ─────────────────────────────────────────────
+
+db_password    = "strong-password-here"
+jwt_secret     = "at-least-32-characters-long-secret-key-here"
+admin_email    = "admin@plo.local"
+admin_password = "strong-admin-password"
+
+# ── API Keys (Bearer tokens for webhook sources) ─────────────────────────────
+
+api_key_erp    = "secret-erp-key-change-me"
+api_key_oms    = "secret-oms-key-change-me"
+api_key_tms    = "secret-tms-key-change-me"
+api_key_manual = "secret-manual-key-change-me"
+
+# ── Optional ─────────────────────────────────────────────────────────────────
+
+anthropic_api_key = ""

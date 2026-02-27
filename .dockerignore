@@ -1,0 +1,13 @@
+node_modules
+dist
+.env
+.env.*
+coverage
+.git
+.github
+client
+docs
+infra
+*.md
+.DS_Store
+Thumbs.db
