@@ -98,4 +98,64 @@ describe("startCron", () => {
 
     expect(runEscalationCheck).toHaveBeenCalledOnce();
   });
+
+  it("hourly callback catches error and logs to console.error", async () => {
+    startCron();
+
+    const hourly = scheduledCallbacks.find(
+      (cb) => cb.expression === "0 * * * *",
+    );
+    expect(hourly).toBeDefined();
+
+    vi.mocked(evaluateScheduledRules).mockRejectedValueOnce(
+      new Error("test error"),
+    );
+
+    await hourly!.callback();
+
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining("horaire"),
+      expect.any(Error),
+    );
+  });
+
+  it("daily callback catches error and logs to console.error", async () => {
+    startCron();
+
+    const daily = scheduledCallbacks.find(
+      (cb) => cb.expression === "0 9 * * *",
+    );
+    expect(daily).toBeDefined();
+
+    vi.mocked(evaluateScheduledRules).mockRejectedValueOnce(
+      new Error("test error"),
+    );
+
+    await daily!.callback();
+
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining("quotidienne"),
+      expect.any(Error),
+    );
+  });
+
+  it("escalation callback catches error and logs to console.error", async () => {
+    startCron();
+
+    const escalation = scheduledCallbacks.find(
+      (cb) => cb.expression === "*/30 * * * *",
+    );
+    expect(escalation).toBeDefined();
+
+    vi.mocked(runEscalationCheck).mockRejectedValueOnce(
+      new Error("test error"),
+    );
+
+    await escalation!.callback();
+
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining("escalade"),
+      expect.any(Error),
+    );
+  });
 });

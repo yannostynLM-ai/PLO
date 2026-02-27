@@ -266,6 +266,89 @@ describe("Customers route", () => {
       expect(res.statusCode).toBe(401);
       expect(res.json().error).toBe("Unauthorized");
     });
+
+    it("sorts by active_anomaly_count when severity is equal", async () => {
+      mockPrisma.project.findMany.mockResolvedValue([
+        buildProjectRow({
+          id: "proj-1",
+          customer_id: "CUST-FEW",
+          notifications: [
+            {
+              sent_at: new Date(),
+              status: "sent",
+              rule: { severity: "warning" },
+              event: { acknowledged_by: null, created_at: new Date() },
+            },
+          ],
+        }),
+        buildProjectRow({
+          id: "proj-2",
+          customer_id: "CUST-MANY",
+          notifications: [
+            {
+              sent_at: new Date(),
+              status: "sent",
+              rule: { severity: "warning" },
+              event: { acknowledged_by: null, created_at: new Date() },
+            },
+            {
+              sent_at: new Date(),
+              status: "sent",
+              rule: { severity: "warning" },
+              event: { acknowledged_by: null, created_at: new Date() },
+            },
+            {
+              sent_at: new Date(),
+              status: "sent",
+              rule: { severity: "warning" },
+              event: { acknowledged_by: null, created_at: new Date() },
+            },
+          ],
+        }),
+      ]);
+
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/customers",
+        headers: { cookie },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      // CUST-MANY has 3 anomalies, CUST-FEW has 1 — CUST-MANY should come first
+      expect(body.customers[0].customer_id).toBe("CUST-MANY");
+      expect(body.customers[1].customer_id).toBe("CUST-FEW");
+    });
+
+    it("merges last_event_at from most recent project event", async () => {
+      const olderDate = new Date("2026-01-01T00:00:00Z");
+      const newerDate = new Date("2026-02-15T00:00:00Z");
+
+      mockPrisma.project.findMany.mockResolvedValue([
+        buildProjectRow({
+          id: "proj-old",
+          customer_id: "CUST-MERGE",
+          events: [{ created_at: olderDate }],
+        }),
+        buildProjectRow({
+          id: "proj-new",
+          customer_id: "CUST-MERGE",
+          events: [{ created_at: newerDate }],
+        }),
+      ]);
+
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/customers",
+        headers: { cookie },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.customers.length).toBe(1);
+      expect(body.customers[0].customer_id).toBe("CUST-MERGE");
+      expect(body.customers[0].last_event_at).toBe(newerDate.toISOString());
+    });
   });
 
   // ========================================================================
@@ -375,6 +458,52 @@ describe("Customers route", () => {
       expect(body.stats.active_project_count).toBe(1);
       expect(body.stats.anomaly_severity).toBe("critical");
       expect(body.stats.active_anomaly_count).toBe(2);
+    });
+
+    it("sorts projects by oldest unacknowledged anomaly date", async () => {
+      const olderAnomaly = new Date("2026-01-10T00:00:00Z");
+      const newerAnomaly = new Date("2026-02-20T00:00:00Z");
+
+      mockPrisma.project.findMany.mockResolvedValue([
+        buildProjectRow({
+          id: "proj-newer",
+          customer_id: "CUST-SORT",
+          notifications: [
+            {
+              sent_at: newerAnomaly,
+              status: "sent",
+              rule: { severity: "warning" },
+              event: { acknowledged_by: null, created_at: newerAnomaly },
+            },
+          ],
+          events: [{ created_at: new Date() }],
+        }),
+        buildProjectRow({
+          id: "proj-older",
+          customer_id: "CUST-SORT",
+          notifications: [
+            {
+              sent_at: olderAnomaly,
+              status: "sent",
+              rule: { severity: "warning" },
+              event: { acknowledged_by: null, created_at: olderAnomaly },
+            },
+          ],
+          events: [{ created_at: new Date() }],
+        }),
+      ]);
+
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/customers/CUST-SORT",
+        headers: { cookie },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      // Project with older unacked anomaly should come first
+      expect(body.projects[0].project_id).toBe("proj-older");
+      expect(body.projects[1].project_id).toBe("proj-newer");
     });
   });
 });

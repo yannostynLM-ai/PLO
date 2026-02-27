@@ -70,6 +70,9 @@ vi.mock("../adapters/registry.js", () => ({
 import { ingestEvent } from "../services/event.service.js";
 const mockIngestEvent = ingestEvent as ReturnType<typeof vi.fn>;
 
+import { getAdapter } from "../adapters/registry.js";
+import { AdapterError } from "../adapters/types.js";
+
 // ---------------------------------------------------------------------------
 // Test suite
 // ---------------------------------------------------------------------------
@@ -231,6 +234,46 @@ describe("POST /api/events/ingest", () => {
     });
 
     expect(res.statusCode).toBe(422);
+    expect(mockIngestEvent).not.toHaveBeenCalled();
+  });
+
+  it("returns 422 when adapter throws AdapterError", async () => {
+    (getAdapter as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+      adapt: vi.fn(() => {
+        throw new AdapterError("Champ manquant: order_ref", { field: "order_ref" });
+      }),
+    });
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/events/ingest",
+      headers: AUTH_HEADER,
+      payload: VALID_BODY,
+    });
+
+    expect(res.statusCode).toBe(422);
+    const body = res.json();
+    expect(body.error).toBe("Unprocessable Entity");
+    expect(body.message).toContain("Champ manquant");
+    expect(body.details).toEqual({ field: "order_ref" });
+    expect(mockIngestEvent).not.toHaveBeenCalled();
+  });
+
+  it("re-throws non-AdapterError as 500", async () => {
+    (getAdapter as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+      adapt: vi.fn(() => {
+        throw new Error("Unexpected crash");
+      }),
+    });
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/events/ingest",
+      headers: AUTH_HEADER,
+      payload: VALID_BODY,
+    });
+
+    expect(res.statusCode).toBe(500);
     expect(mockIngestEvent).not.toHaveBeenCalled();
   });
 });

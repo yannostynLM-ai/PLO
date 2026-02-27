@@ -172,4 +172,16 @@ describe("GET /api/activity", () => {
 
     expect(res.statusCode).toBe(401);
   });
+
+  it("returns 422 when limit exceeds maximum", async () => {
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/activity?limit=200",
+      headers: { cookie },
+    });
+
+    expect(res.statusCode).toBe(422);
+    expect(res.json().error).toBe("Unprocessable Entity");
+    expect(mockPrisma.activityLog.findMany).not.toHaveBeenCalled();
+  });
 });

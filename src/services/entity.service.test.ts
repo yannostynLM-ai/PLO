@@ -618,4 +618,211 @@ describe("applyEntityUpdates", () => {
     expect(mockProject.findUnique).not.toHaveBeenCalled();
     expect(mockProject.update).not.toHaveBeenCalled();
   });
+
+  // ---- new switch-arm coverage tests ----
+
+  it("routes stock.shortage to handleStockShortage", async () => {
+    mockOrderLine.updateMany.mockResolvedValue({ count: 1 });
+
+    await applyEntityUpdates({
+      event_type: "stock.shortage",
+      project_id: "proj-1",
+      order_id: "ord-1",
+      installation_id: null,
+      payload: { shortage_skus: ["SKU-A"] },
+    });
+
+    expect(mockOrderLine.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ stock_status: "shortage" }),
+      }),
+    );
+  });
+
+  it("routes stock.partial to the same handleStockShortage handler", async () => {
+    mockOrderLine.updateMany.mockResolvedValue({ count: 1 });
+
+    await applyEntityUpdates({
+      event_type: "stock.partial",
+      project_id: "proj-1",
+      order_id: "ord-1",
+      installation_id: null,
+      payload: { sku: "SKU-B" },
+    });
+
+    expect(mockOrderLine.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ stock_status: "shortage" }),
+      }),
+    );
+  });
+
+  it("routes stock.check_ok to handleStockCheckOk", async () => {
+    mockOrderLine.updateMany.mockResolvedValue({ count: 1 });
+
+    await applyEntityUpdates({
+      event_type: "stock.check_ok",
+      project_id: "proj-1",
+      order_id: "ord-1",
+      installation_id: null,
+      payload: {},
+    });
+
+    expect(mockOrderLine.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ stock_status: "available" }),
+      }),
+    );
+  });
+
+  it("routes shipment.dispatched to handleShipmentDispatched", async () => {
+    mockShipment.upsert.mockResolvedValue({});
+
+    await applyEntityUpdates({
+      event_type: "shipment.dispatched",
+      project_id: "proj-1",
+      order_id: "ord-1",
+      installation_id: null,
+      payload: { shipment_id: "SHP-1", carrier: "DHL" },
+    });
+
+    expect(mockShipment.upsert).toHaveBeenCalled();
+  });
+
+  it("routes shipment.eta_updated to handleShipmentEtaUpdated", async () => {
+    mockShipment.updateMany.mockResolvedValue({ count: 1 });
+    mockShipment.findFirst.mockResolvedValue({ project_id: "proj-1" });
+    mockShipment.findMany.mockResolvedValue([
+      { estimated_arrival: new Date("2026-04-01T00:00:00Z") },
+    ]);
+    mockConsolidation.updateMany.mockResolvedValue({ count: 1 });
+
+    await applyEntityUpdates({
+      event_type: "shipment.eta_updated",
+      project_id: "proj-1",
+      order_id: null,
+      installation_id: null,
+      payload: { shipment_id: "SHP-1", new_eta: "2026-04-01T00:00:00Z" },
+    });
+
+    expect(mockShipment.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { oms_ref: "SHP-1" },
+      }),
+    );
+  });
+
+  it("routes shipment.arrived_at_station to handleShipmentArrivedAtStation", async () => {
+    mockShipment.updateMany.mockResolvedValue({ count: 1 });
+    mockConsolidation.findUnique.mockResolvedValue({
+      orders_arrived: [],
+      orders_required: ["ord-1"],
+    });
+    mockConsolidation.update.mockResolvedValue({});
+
+    await applyEntityUpdates({
+      event_type: "shipment.arrived_at_station",
+      project_id: "proj-1",
+      order_id: "ord-1",
+      installation_id: null,
+      payload: { shipment_id: "SHP-1" },
+    });
+
+    expect(mockShipment.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { oms_ref: "SHP-1" },
+        data: expect.objectContaining({ status: "arrived" }),
+      }),
+    );
+    expect(mockConsolidation.update).toHaveBeenCalled();
+  });
+
+  it("routes consolidation.complete to handleConsolidationComplete", async () => {
+    mockConsolidation.updateMany.mockResolvedValue({ count: 1 });
+    mockStep.updateMany.mockResolvedValue({ count: 1 });
+
+    await applyEntityUpdates({
+      event_type: "consolidation.complete",
+      project_id: "proj-1",
+      order_id: null,
+      installation_id: null,
+      payload: {},
+    });
+
+    expect(mockConsolidation.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { project_id: "proj-1" },
+        data: expect.objectContaining({ status: "complete" }),
+      }),
+    );
+    expect(mockStep.updateMany).toHaveBeenCalled();
+  });
+
+  it("routes consolidation.partial_approved to handleConsolidationPartialApproved", async () => {
+    mockConsolidation.updateMany.mockResolvedValue({ count: 1 });
+
+    await applyEntityUpdates({
+      event_type: "consolidation.partial_approved",
+      project_id: "proj-1",
+      order_id: null,
+      installation_id: null,
+      payload: { partial_approved_by: { customer: true } },
+    });
+
+    expect(mockConsolidation.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { project_id: "proj-1" },
+        data: expect.objectContaining({ status: "partial_approved" }),
+      }),
+    );
+  });
+
+  it("routes lastmile.scheduled to handleLastmileScheduled", async () => {
+    mockConsolidation.findUnique.mockResolvedValue({ id: "cons-1" });
+    mockLastMile.upsert.mockResolvedValue({});
+
+    await applyEntityUpdates({
+      event_type: "lastmile.scheduled",
+      project_id: "proj-1",
+      order_id: null,
+      installation_id: null,
+      payload: {
+        lastmile_id: "LM-1",
+        scheduled_date: "2026-04-01T00:00:00Z",
+        carrier: "Colissimo",
+      },
+    });
+
+    expect(mockLastMile.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { project_id: "proj-1" },
+        create: expect.objectContaining({ status: "scheduled" }),
+        update: expect.objectContaining({ status: "scheduled" }),
+      }),
+    );
+  });
+
+  it("routes installation.completed to maybeAutoCloseProject", async () => {
+    mockProject.findUnique.mockResolvedValue({
+      id: "proj-1",
+      status: "active",
+      customer_id: "CUST-1",
+      last_mile: { status: "delivered" },
+      installation: null,
+    });
+    mockProject.update.mockResolvedValue({});
+
+    await applyEntityUpdates({
+      event_type: "installation.completed",
+      project_id: "proj-1",
+      order_id: null,
+      installation_id: "inst-1",
+      payload: {},
+    });
+
+    expect(mockProject.update).toHaveBeenCalledWith({
+      where: { id: "proj-1" },
+      data: expect.objectContaining({ status: "completed" }),
+    });
+  });
 });

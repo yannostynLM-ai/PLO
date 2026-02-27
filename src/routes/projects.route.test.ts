@@ -30,6 +30,9 @@ vi.mock("../lib/queue.js", () => ({
   deadLetterQueue: { add: vi.fn(), close: vi.fn() },
 }));
 
+import { logActivity } from "../lib/activity.js";
+const mockLogActivity = logActivity as ReturnType<typeof vi.fn>;
+
 // ---------------------------------------------------------------------------
 // Server + JWT cookies
 // ---------------------------------------------------------------------------
@@ -327,6 +330,52 @@ describe("Projects route", () => {
       expect(res.json().error).toBe("Not Found");
       expect(mockPrisma.project.update).not.toHaveBeenCalled();
     });
+
+    it("returns 422 when body contains invalid field values", async () => {
+      const res = await app.inject({
+        method: "PATCH",
+        url: "/api/projects/proj-1",
+        headers: { cookie },
+        payload: { status: 123 }, // status must be a string
+      });
+
+      expect(res.statusCode).toBe(422);
+      expect(res.json().error).toBe("Unprocessable Entity");
+      expect(mockPrisma.project.findUnique).not.toHaveBeenCalled();
+      expect(mockPrisma.project.update).not.toHaveBeenCalled();
+    });
+
+    it("logs activity when assigned_to changes", async () => {
+      mockPrisma.project.findUnique.mockResolvedValue({
+        id: "proj-1",
+        status: "active",
+        customer_id: "CUST-001",
+        assigned_to: null,
+      });
+      mockPrisma.project.update.mockResolvedValue({
+        id: "proj-1",
+        status: "active",
+        store_id: "S1",
+        assigned_to: "user-2",
+        updated_at: new Date(),
+      });
+
+      const res = await app.inject({
+        method: "PATCH",
+        url: "/api/projects/proj-1",
+        headers: { cookie },
+        payload: { assigned_to: "user-2" },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(mockLogActivity).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "project_assigned",
+          entity_type: "project",
+          entity_id: "proj-1",
+        }),
+      );
+    });
   });
 
   // ========================================================================
@@ -392,6 +441,34 @@ describe("Projects route", () => {
 
       expect(res.statusCode).toBe(404);
       expect(res.json().error).toBe("Not Found");
+    });
+
+    it("returns 404 when project exists but has no consolidation", async () => {
+      mockPrisma.project.findUnique.mockResolvedValue({ customer_id: "CUST-001" });
+      mockPrisma.consolidation.findUnique.mockResolvedValue(null);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/projects/proj-1/partial-delivery-approval",
+        headers: { cookie },
+        payload: { approved_by: "Admin" },
+      });
+
+      expect(res.statusCode).toBe(404);
+      expect(res.json().message).toContain("consolidation");
+      expect(mockPrisma.consolidation.update).not.toHaveBeenCalled();
+    });
+
+    it("returns 422 when approved_by is missing", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/projects/proj-1/partial-delivery-approval",
+        headers: { cookie },
+        payload: {},
+      });
+
+      expect(res.statusCode).toBe(422);
+      expect(res.json().error).toBe("Unprocessable Entity");
     });
   });
 
