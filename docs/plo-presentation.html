@@ -71,6 +71,78 @@
     .reveal .roi-card .roi-after { font-size: 1.6em; font-weight: 800; color: var(--ok); }
     .reveal .roi-card .roi-label { font-size: 0.65em; color: #94a3b8; margin-top: 6px; }
     .reveal .separator-line { width: 120px; height: 2px; background: var(--accent); margin: 30px auto; opacity: 0.4; }
+
+    /* ── Demo mockup styles ─────────────────────────────────────────── */
+    .mockup { background: #0f172a; border-radius: 12px; border: 1px solid #1e293b; overflow: hidden; max-width: 1050px; margin: 0 auto; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+    .mockup-bar { background: #1e293b; padding: 8px 16px; display: flex; align-items: center; gap: 8px; font-size: 0.45em; color: #64748b; }
+    .mockup-bar .dots { display: flex; gap: 6px; }
+    .mockup-bar .dots span { width: 10px; height: 10px; border-radius: 50%; }
+    .mockup-bar .dot-r { background: #ef4444; }
+    .mockup-bar .dot-y { background: #f59e0b; }
+    .mockup-bar .dot-g { background: #22c55e; }
+    .mockup-bar .url { flex: 1; background: #0f172a; border-radius: 4px; padding: 4px 12px; margin-left: 8px; color: #94a3b8; font-family: monospace; }
+    .mockup-body { display: flex; min-height: 380px; }
+    .mockup-sidebar { width: 180px; background: #1e293b; padding: 16px 0; flex-shrink: 0; }
+    .mockup-sidebar .nav-item { padding: 10px 20px; font-size: 0.5em; color: #94a3b8; cursor: default; display: flex; align-items: center; gap: 8px; }
+    .mockup-sidebar .nav-item.active { background: rgba(0,180,216,0.1); color: var(--accent); border-left: 3px solid var(--accent); }
+    .mockup-sidebar .nav-logo { padding: 8px 20px 20px; font-size: 0.7em; font-weight: 800; color: var(--accent); border-bottom: 1px solid #334155; margin-bottom: 8px; }
+    .mockup-main { flex: 1; padding: 20px; overflow: hidden; }
+    .mockup-main h4 { margin: 0 0 14px; font-size: 0.7em; color: #e2e8f0; font-weight: 600; }
+    .mock-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.48em; font-weight: 600; vertical-align: middle; }
+    .mock-badge-red { background: rgba(239,68,68,0.2); color: #ef4444; }
+    .mock-badge-amber { background: rgba(245,158,11,0.2); color: #f59e0b; }
+    .mock-badge-green { background: rgba(34,197,94,0.2); color: #22c55e; }
+    .mock-badge-blue { background: rgba(0,180,216,0.2); color: var(--accent); }
+    .mock-badge-gray { background: rgba(100,116,139,0.2); color: #94a3b8; }
+    .mock-table { width: 100%; border-collapse: collapse; font-size: 0.48em; text-align: left; }
+    .mock-table th { background: rgba(0,180,216,0.08); color: var(--accent); padding: 8px 10px; font-weight: 600; border-bottom: 1px solid #334155; }
+    .mock-table td { padding: 8px 10px; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
+    .mock-table tr:hover { background: rgba(0,180,216,0.03); }
+    .mock-toast { position: absolute; top: 16px; right: 16px; background: #1e293b; border-left: 4px solid var(--crit); border-radius: 8px; padding: 12px 16px; font-size: 0.48em; max-width: 280px; box-shadow: 0 4px 16px rgba(0,0,0,0.4); z-index: 10; }
+    .mock-toast .toast-title { color: var(--crit); font-weight: 700; margin-bottom: 4px; }
+    .mock-toast .toast-body { color: #94a3b8; }
+    .mock-btn { display: inline-block; padding: 4px 14px; border-radius: 6px; font-size: 0.48em; font-weight: 600; cursor: default; }
+    .mock-btn-primary { background: var(--accent); color: #0f172a; }
+    .mock-btn-outline { background: transparent; border: 1px solid #475569; color: #94a3b8; }
+    .mock-btn-green { background: var(--ok); color: #0f172a; }
+    .mock-kpi-row { display: flex; gap: 12px; margin-bottom: 16px; }
+    .mock-kpi { flex: 1; background: #1e293b; border-radius: 8px; padding: 12px; text-align: center; }
+    .mock-kpi .mk-val { font-size: 1.1em; font-weight: 800; }
+    .mock-kpi .mk-label { font-size: 0.42em; color: #64748b; margin-top: 2px; }
+    .mock-milestone-track { display: flex; align-items: center; margin: 16px 0; gap: 0; }
+    .mock-milestone-track .ms { flex: 1; text-align: center; position: relative; font-size: 0.42em; }
+    .mock-milestone-track .ms .ms-dot { width: 22px; height: 22px; border-radius: 50%; margin: 0 auto 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #0f172a; font-weight: 700; }
+    .mock-milestone-track .ms .ms-line { position: absolute; top: 11px; left: 50%; width: 100%; height: 3px; z-index: 0; }
+    .mock-milestone-track .ms:last-child .ms-line { display: none; }
+    .mock-milestone-track .ms .ms-label { color: #94a3b8; }
+    .mock-milestone-track .ms.done .ms-dot { background: var(--ok); }
+    .mock-milestone-track .ms.done .ms-line { background: var(--ok); }
+    .mock-milestone-track .ms.done .ms-label { color: #e2e8f0; }
+    .mock-milestone-track .ms.active .ms-dot { background: var(--accent); animation: pulse-dot 2s infinite; }
+    .mock-milestone-track .ms.active .ms-line { background: #475569; }
+    .mock-milestone-track .ms.active .ms-label { color: var(--accent); font-weight: 600; }
+    .mock-milestone-track .ms.pending .ms-dot { background: #475569; }
+    .mock-milestone-track .ms.pending .ms-line { background: #334155; }
+    .mock-readiness { border-radius: 10px; padding: 16px 20px; text-align: center; font-weight: 800; font-size: 0.8em; margin: 12px 0; }
+    .mock-readiness.not-ready { background: rgba(239,68,68,0.12); border: 2px solid var(--crit); color: var(--crit); }
+    .mock-readiness.ready { background: rgba(34,197,94,0.12); border: 2px solid var(--ok); color: var(--ok); }
+    .mock-portal { background: #0f172a; border-radius: 12px; border: 1px solid #1e293b; overflow: hidden; max-width: 800px; margin: 0 auto; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+    .mock-portal-header { background: linear-gradient(135deg, #0f172a, #1e293b); padding: 20px 28px; border-bottom: 1px solid #334155; }
+    .mock-portal-body { padding: 20px 28px; }
+    .mock-info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px; font-size: 0.48em; }
+    .mock-info-item { background: #1e293b; border-radius: 8px; padding: 10px 14px; }
+    .mock-info-item .info-label { color: #64748b; font-size: 0.85em; margin-bottom: 2px; }
+    .mock-info-item .info-value { color: #e2e8f0; font-weight: 600; }
+    .mock-activity { font-size: 0.44em; margin-top: 12px; }
+    .mock-activity .act-entry { display: flex; align-items: flex-start; gap: 8px; padding: 6px 0; border-bottom: 1px solid #1e293b; }
+    .mock-activity .act-time { color: #64748b; white-space: nowrap; min-width: 50px; }
+    .mock-activity .act-icon { width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; }
+    .mock-activity .act-text { color: #cbd5e1; }
+    @keyframes pulse-dot { 0%, 100% { box-shadow: 0 0 0 0 rgba(0,180,216,0.4); } 50% { box-shadow: 0 0 0 8px rgba(0,180,216,0); } }
+    @keyframes slide-in-right { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .mock-toast.animate-in { animation: slide-in-right 0.5s ease-out forwards; }
+    @keyframes fade-highlight { 0% { background: rgba(0,180,216,0.2); } 100% { background: transparent; } }
+    .mock-highlight { animation: fade-highlight 2s ease-out; }
   </style>
 </head>
 <body>
@@ -864,6 +936,407 @@ ERP / OMS / TMS / WFM / CRM / E-commerce / Manual
         <li>Anomaly details</li>
         <li>Operator communications</li>
       </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SEPARATOR — Live Demo Mockups -->
+<!-- ============================================================ -->
+<section data-background-color="#0f172a">
+  <div class="separator-line" style="width: 80px;"></div>
+  <h2 style="font-size: 1.2em; color: #475569;">Live Demo Walkthrough</h2>
+  <p style="font-size: 0.7em; color: #334155;">Interactive mockups &mdash; 3 user stories</p>
+  <div class="separator-line" style="width: 80px;"></div>
+</section>
+
+<!-- ============================================================ -->
+<!-- DEMO 1a: Operator Dashboard — Overview -->
+<!-- ============================================================ -->
+<section>
+  <h2 style="font-size: 0.9em; margin-bottom: 12px;">Demo 1 &mdash; Operator Dashboard</h2>
+  <div class="mockup" style="position: relative;">
+    <div class="mockup-bar">
+      <div class="dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div>
+      <div class="url">https://plo.leroy-merlin.fr/dashboard</div>
+    </div>
+    <div class="mockup-body">
+      <div class="mockup-sidebar">
+        <div class="mockup-sidebar .nav-logo" style="padding: 8px 20px 20px; font-size: 0.7em; font-weight: 800; color: var(--accent); border-bottom: 1px solid #334155; margin-bottom: 8px;">PLO</div>
+        <div class="nav-item active">&#9632; Dashboard</div>
+        <div class="nav-item">&#9632; Projects</div>
+        <div class="nav-item">&#9632; Anomalies <span class="mock-badge mock-badge-red" style="margin-left: auto;">7</span></div>
+        <div class="nav-item">&#9632; Rules</div>
+        <div class="nav-item">&#9632; Activity</div>
+      </div>
+      <div class="mockup-main">
+        <h4>Project Overview <span style="font-weight: 400; color: #64748b; font-size: 0.8em;">&mdash; 6 active projects</span></h4>
+        <div class="mock-kpi-row">
+          <div class="mock-kpi">
+            <div class="mk-val" style="color: var(--accent);">6</div>
+            <div class="mk-label">Active Projects</div>
+          </div>
+          <div class="mock-kpi">
+            <div class="mk-val" style="color: var(--crit);">7</div>
+            <div class="mk-label">Open Anomalies</div>
+          </div>
+          <div class="mock-kpi">
+            <div class="mk-val" style="color: var(--warn);">2</div>
+            <div class="mk-label">Escalated</div>
+          </div>
+          <div class="mock-kpi">
+            <div class="mk-val" style="color: var(--ok);">3</div>
+            <div class="mk-label">On Track</div>
+          </div>
+        </div>
+        <table class="mock-table">
+          <tr><th>Project</th><th>Client</th><th>Type</th><th>Status</th><th>Anomalies</th></tr>
+          <tr><td>CRM-DUBOIS-2025</td><td>Dubois</td><td>Kitchen</td><td><span class="mock-badge mock-badge-green">active</span></td><td><span class="mock-badge mock-badge-gray">0</span></td></tr>
+          <tr><td>CRM-MARTIN-2025</td><td>Martin</td><td>Kitchen</td><td><span class="mock-badge mock-badge-green">active</span></td><td><span class="mock-badge mock-badge-gray">0</span></td></tr>
+          <tr style="background: rgba(239,68,68,0.05);"><td><strong>CRM-LECLERC-2025</strong></td><td>Leclerc</td><td>Kitchen</td><td><span class="mock-badge mock-badge-red">on_hold</span></td><td><span class="mock-badge mock-badge-red">3</span></td></tr>
+          <tr><td>CRM-PETIT-2025</td><td>Petit</td><td>Energy Renov.</td><td><span class="mock-badge mock-badge-amber">active</span></td><td><span class="mock-badge mock-badge-amber">1</span></td></tr>
+          <tr style="background: rgba(239,68,68,0.05);"><td><strong>CRM-RENAUD-2025</strong></td><td>Renaud</td><td>Bathroom</td><td><span class="mock-badge mock-badge-amber">active</span></td><td><span class="mock-badge mock-badge-red">2</span></td></tr>
+          <tr><td>CRM-MOREAU-2024</td><td>Moreau</td><td>Kitchen</td><td><span class="mock-badge mock-badge-green">completed</span></td><td><span class="mock-badge mock-badge-green">1 resolved</span></td></tr>
+        </table>
+      </div>
+    </div>
+    <!-- SSE notification toast -->
+    <div class="fragment mock-toast animate-in" style="position: absolute; top: 50px; right: 20px;">
+      <div class="toast-title">&#9888; New Anomaly &mdash; ANO-01</div>
+      <div class="toast-body">Leclerc &mdash; SKU backordered<br/>72h before promised delivery<br/><span style="color: var(--crit); font-weight: 600;">Severity: critical</span></div>
+    </div>
+  </div>
+  <div class="fragment" style="font-size: 0.55em; color: #64748b; margin-top: 10px;">
+    &#9889; Real-time SSE notification &mdash; anomaly detected on event ingestion, no page refresh needed
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- DEMO 1b: Operator — Project Detail + Acknowledge -->
+<!-- ============================================================ -->
+<section>
+  <h2 style="font-size: 0.9em; margin-bottom: 12px;">Demo 1 &mdash; Project Detail &amp; Acknowledge</h2>
+  <div class="mockup">
+    <div class="mockup-bar">
+      <div class="dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div>
+      <div class="url">https://plo.leroy-merlin.fr/projects/CRM-LECLERC-2025</div>
+    </div>
+    <div class="mockup-body">
+      <div class="mockup-sidebar">
+        <div style="padding: 8px 20px 20px; font-size: 0.7em; font-weight: 800; color: var(--accent); border-bottom: 1px solid #334155; margin-bottom: 8px;">PLO</div>
+        <div class="nav-item">&#9632; Dashboard</div>
+        <div class="nav-item active">&#9632; Projects</div>
+        <div class="nav-item">&#9632; Anomalies</div>
+        <div class="nav-item">&#9632; Rules</div>
+        <div class="nav-item">&#9632; Activity</div>
+      </div>
+      <div class="mockup-main" style="font-size: 0.95em;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+          <h4 style="margin: 0;">Leclerc &mdash; Kitchen &euro;22,000</h4>
+          <span class="mock-badge mock-badge-red">on_hold</span>
+          <span class="mock-badge mock-badge-amber" style="margin-left: auto;">Risk: 78/100</span>
+        </div>
+        <!-- Anomaly list -->
+        <div style="font-size: 0.48em; color: #94a3b8; margin-bottom: 6px; font-weight: 600;">ACTIVE ANOMALIES</div>
+        <table class="mock-table">
+          <tr><th>Rule</th><th>Description</th><th>Severity</th><th>Created</th><th>Action</th></tr>
+          <tr>
+            <td><strong class="crit">ANO-01</strong></td>
+            <td>SKU Shortage &lt; 72h before delivery</td>
+            <td><span class="mock-badge mock-badge-red">critical</span></td>
+            <td style="font-size: 0.9em;">27/02 09:14</td>
+            <td><span class="mock-btn mock-btn-outline">Acknowledge</span></td>
+          </tr>
+          <tr>
+            <td><strong class="crit">ANO-18</strong></td>
+            <td>Transport exception &mdash; carrier DACHSER</td>
+            <td><span class="mock-badge mock-badge-red">critical</span></td>
+            <td style="font-size: 0.9em;">27/02 09:22</td>
+            <td><span class="mock-btn mock-btn-outline">Acknowledge</span></td>
+          </tr>
+          <tr>
+            <td><strong class="warn">ANO-17</strong></td>
+            <td>Consolidation past due date</td>
+            <td><span class="mock-badge mock-badge-amber">high</span></td>
+            <td style="font-size: 0.9em;">27/02 10:00</td>
+            <td><span class="mock-btn mock-btn-outline">Acknowledge</span></td>
+          </tr>
+        </table>
+        <!-- Fragment: after acknowledge -->
+        <div class="fragment" style="margin-top: 14px;">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+            <span class="mock-btn mock-btn-green">&#10003; All 3 acknowledged</span>
+            <span style="font-size: 0.44em; color: #64748b;">by Sophie Martin &mdash; 27/02 10:05</span>
+          </div>
+          <div style="font-size: 0.48em; color: #94a3b8; margin-bottom: 6px; font-weight: 600;">ACTIVITY LOG</div>
+          <div class="mock-activity">
+            <div class="act-entry mock-highlight">
+              <div class="act-time">10:05</div>
+              <div class="act-icon" style="background: var(--ok);">&#10003;</div>
+              <div class="act-text"><strong>Sophie Martin</strong> acknowledged 3 anomalies (ANO-01, ANO-18, ANO-17) on project CRM-LECLERC-2025</div>
+            </div>
+            <div class="act-entry">
+              <div class="act-time">10:00</div>
+              <div class="act-icon" style="background: var(--warn);">!</div>
+              <div class="act-text"><strong>System</strong> detected anomaly ANO-17 &mdash; Consolidation past due</div>
+            </div>
+            <div class="act-entry">
+              <div class="act-time">09:22</div>
+              <div class="act-icon" style="background: var(--crit);">&#9888;</div>
+              <div class="act-text"><strong>System</strong> detected anomaly ANO-18 &mdash; Transport exception DACHSER</div>
+            </div>
+            <div class="act-entry">
+              <div class="act-time">09:14</div>
+              <div class="act-icon" style="background: var(--crit);">&#9888;</div>
+              <div class="act-text"><strong>System</strong> detected anomaly ANO-01 &mdash; SKU shortage for ERP-CMD-LECLERC-A</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="fragment" style="font-size: 0.55em; color: #64748b; margin-top: 10px;">
+    &#9989; Bulk acknowledge in one click &mdash; every action traced in the audit journal with timestamp and operator identity
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- DEMO 2: Customer Tracking Portal -->
+<!-- ============================================================ -->
+<section>
+  <h2 style="font-size: 0.9em; margin-bottom: 12px;">Demo 2 &mdash; Customer Tracking Portal</h2>
+  <div class="mock-portal">
+    <div class="mockup-bar">
+      <div class="dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div>
+      <div class="url">https://plo.leroy-merlin.fr/api/public/tracking/a1b2c3d4-martin-token</div>
+    </div>
+    <div class="mock-portal-header">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="font-size: 1em; font-weight: 800; color: var(--accent);">PLO</div>
+        <div style="width: 1px; height: 24px; background: #334155;"></div>
+        <div>
+          <div style="font-size: 0.6em; color: #64748b;">Your project</div>
+          <div style="font-size: 0.8em; color: #e2e8f0; font-weight: 600;">Martin Family &mdash; Kitchen</div>
+        </div>
+        <div style="margin-left: auto;">
+          <span class="mock-badge mock-badge-green" style="font-size: 0.55em; padding: 4px 14px;">On track</span>
+        </div>
+      </div>
+    </div>
+    <div class="mock-portal-body">
+      <!-- Milestone tracker -->
+      <div class="mock-milestone-track">
+        <div class="ms done">
+          <div class="ms-line"></div>
+          <div class="ms-dot">&#10003;</div>
+          <div class="ms-label"><strong>Orders<br/>confirmed</strong><br/><span style="color: #64748b;">Jan 15</span></div>
+        </div>
+        <div class="ms done">
+          <div class="ms-line"></div>
+          <div class="ms-dot">&#10003;</div>
+          <div class="ms-label"><strong>Shipments<br/>arrived</strong><br/><span style="color: #64748b;">Feb 18</span></div>
+        </div>
+        <div class="ms done">
+          <div class="ms-line"></div>
+          <div class="ms-dot">&#10003;</div>
+          <div class="ms-label"><strong>Consolidation<br/>complete</strong><br/><span style="color: #64748b;">Feb 19</span></div>
+        </div>
+        <div class="ms done">
+          <div class="ms-line"></div>
+          <div class="ms-dot">&#10003;</div>
+          <div class="ms-label"><strong>Delivered</strong><br/><span style="color: #64748b;">Feb 22</span></div>
+        </div>
+        <div class="ms active">
+          <div class="ms-line"></div>
+          <div class="ms-dot">5</div>
+          <div class="ms-label"><strong>Installation</strong><br/><span style="color: var(--accent);">Mar 1</span></div>
+        </div>
+      </div>
+      <!-- Info cards -->
+      <div class="mock-info-grid" style="margin-top: 20px;">
+        <div class="mock-info-item">
+          <div class="info-label">Delivery</div>
+          <div class="info-value" style="color: var(--ok);">&#10003; All items delivered</div>
+        </div>
+        <div class="mock-info-item">
+          <div class="info-label">Installation date</div>
+          <div class="info-value">March 1, 2026</div>
+        </div>
+        <div class="mock-info-item">
+          <div class="info-label">Time slot</div>
+          <div class="info-value">08:00 &ndash; 12:00</div>
+        </div>
+      </div>
+      <!-- Shipment tracking -->
+      <div class="fragment">
+        <div style="font-size: 0.48em; color: #94a3b8; font-weight: 600; margin-bottom: 6px;">SHIPMENT TRACKING</div>
+        <table class="mock-table" style="font-size: 0.44em;">
+          <tr><th>Order</th><th>Carrier</th><th>Tracking</th><th>Status</th></tr>
+          <tr><td>Order A &mdash; Furniture</td><td>DACHSER</td><td style="font-family: monospace; color: var(--accent);">DAC-2025-MART-A</td><td><span class="mock-badge mock-badge-green">Delivered</span></td></tr>
+          <tr><td>Order B &mdash; Appliances</td><td>DB SCHENKER</td><td style="font-family: monospace; color: var(--accent);">DBS-2025-MART-B</td><td><span class="mock-badge mock-badge-green">Delivered</span></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="fragment" style="font-size: 0.55em; color: #64748b; margin-top: 10px;">
+    &#128274; No login required &mdash; unique token URL. Internal IDs, anomalies, and operator data remain hidden.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- DEMO 3: Installer Portal — Delivery Readiness -->
+<!-- ============================================================ -->
+<section>
+  <h2 style="font-size: 0.9em; margin-bottom: 12px;">Demo 3 &mdash; Installer Portal (Renaud)</h2>
+  <div class="mock-portal">
+    <div class="mockup-bar">
+      <div class="dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div>
+      <div class="url">https://plo.leroy-merlin.fr/api/public/installer/install-renaud-2025-token</div>
+    </div>
+    <div class="mock-portal-header">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="font-size: 1em; font-weight: 800; color: var(--accent);">PLO</div>
+        <div style="width: 1px; height: 24px; background: #334155;"></div>
+        <div>
+          <div style="font-size: 0.6em; color: #64748b;">Installer Portal</div>
+          <div style="font-size: 0.8em; color: #e2e8f0; font-weight: 600;">Renaud &mdash; Bathroom</div>
+        </div>
+        <div style="margin-left: auto; font-size: 0.55em; color: #94a3b8;">
+          Technician: <strong style="color: #e2e8f0;">Jean-Pierre Lavigne</strong>
+        </div>
+      </div>
+    </div>
+    <div class="mock-portal-body">
+      <!-- Installation info -->
+      <div class="mock-info-grid">
+        <div class="mock-info-item">
+          <div class="info-label">Installation date</div>
+          <div class="info-value">March 2, 2026</div>
+        </div>
+        <div class="mock-info-item">
+          <div class="info-label">Time slot</div>
+          <div class="info-value">08:00 &ndash; 17:00</div>
+        </div>
+        <div class="mock-info-item">
+          <div class="info-label">Address</div>
+          <div class="info-value">22 rue de Vaugirard, Paris 75015</div>
+        </div>
+      </div>
+      <!-- Readiness indicator — NOT READY -->
+      <div id="readiness-block">
+        <div class="mock-readiness not-ready">
+          &#10060; NOT READY &mdash; 1/2 orders delivered
+        </div>
+      </div>
+      <!-- Orders table -->
+      <table class="mock-table" style="margin-top: 12px;">
+        <tr><th>Order</th><th>Status</th><th>Promised date</th><th>Carrier</th><th>Shipment</th></tr>
+        <tr>
+          <td>ERP-CMD-RENAUD-A</td>
+          <td><span class="mock-badge mock-badge-green">delivered</span></td>
+          <td>Feb 20</td>
+          <td>PROPRE</td>
+          <td><span class="mock-badge mock-badge-green">arrived</span></td>
+        </tr>
+        <tr style="background: rgba(239,68,68,0.05);">
+          <td>ERP-CMD-RENAUD-B</td>
+          <td><span class="mock-badge mock-badge-amber" id="order-b-status">in_fulfillment</span></td>
+          <td>Feb 20</td>
+          <td>DACHSER</td>
+          <td><span class="mock-badge mock-badge-amber" id="ship-b-status">in_transit</span></td>
+        </tr>
+      </table>
+      <!-- Milestones -->
+      <div class="mock-milestone-track" style="margin-top: 16px;">
+        <div class="ms done">
+          <div class="ms-line"></div>
+          <div class="ms-dot">&#10003;</div>
+          <div class="ms-label">Orders<br/>confirmed</div>
+        </div>
+        <div class="ms done">
+          <div class="ms-line"></div>
+          <div class="ms-dot">&#10003;</div>
+          <div class="ms-label">Shipments<br/>arrived</div>
+        </div>
+        <div class="ms active">
+          <div class="ms-line"></div>
+          <div class="ms-dot">3</div>
+          <div class="ms-label">Consolidation</div>
+        </div>
+        <div class="ms pending">
+          <div class="ms-line"></div>
+          <div class="ms-dot">4</div>
+          <div class="ms-label">Delivery</div>
+        </div>
+        <div class="ms pending">
+          <div class="ms-dot">5</div>
+          <div class="ms-label">Installation</div>
+        </div>
+      </div>
+      <!-- Fragment: order delivered → readiness turns green -->
+      <div class="fragment" data-fragment-index="1" style="margin-top: 14px; padding: 12px; background: rgba(34,197,94,0.08); border-radius: 8px; border-left: 4px solid var(--ok);">
+        <div style="font-size: 0.5em; color: var(--ok); font-weight: 700; margin-bottom: 4px;">&#9889; UPDATE &mdash; Feb 28, 14:30</div>
+        <div style="font-size: 0.46em; color: #cbd5e1;">
+          Order <strong>ERP-CMD-RENAUD-B</strong> delivered &bull;
+          Last-mile delivery complete &bull;
+          Consolidation: 2/2 orders arrived
+        </div>
+        <div style="margin-top: 10px;">
+          <div class="mock-readiness ready">
+            &#10004; READY &mdash; 2/2 orders delivered
+          </div>
+        </div>
+        <div style="font-size: 0.46em; color: #94a3b8; margin-top: 6px; text-align: center;">
+          All prerequisites met &mdash; installation can proceed as scheduled
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="fragment" data-fragment-index="2" style="font-size: 0.55em; color: #64748b; margin-top: 10px;">
+    &#128736; The installer sees the status change in real time &mdash; no phone call, no email chase, no wasted trip
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- DEMO Summary — What we just saw -->
+<!-- ============================================================ -->
+<section>
+  <h2>Demo Recap</h2>
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 24px; font-size: 0.75em;">
+    <div class="box" style="border-top: 4px solid var(--accent); text-align: center;">
+      <div style="font-size: 1.8em; margin-bottom: 8px;">&#128187;</div>
+      <h3 class="accent" style="font-size: 0.95em;">Operator</h3>
+      <ul style="font-size: 0.85em; text-align: left;">
+        <li>Real-time anomaly alerts (SSE)</li>
+        <li>Project drill-down with risk score</li>
+        <li>Bulk acknowledge</li>
+        <li>Full audit trail</li>
+      </ul>
+    </div>
+    <div class="box" style="border-top: 4px solid var(--ok); text-align: center;">
+      <div style="font-size: 1.8em; margin-bottom: 8px;">&#128100;</div>
+      <h3 class="ok" style="font-size: 0.95em;">Customer</h3>
+      <ul style="font-size: 0.85em; text-align: left;">
+        <li>Unique tracking URL</li>
+        <li>Visual milestone progress</li>
+        <li>Shipment tracking details</li>
+        <li>No login, no app download</li>
+      </ul>
+    </div>
+    <div class="box" style="border-top: 4px solid var(--warn); text-align: center;">
+      <div style="font-size: 1.8em; margin-bottom: 8px;">&#128295;</div>
+      <h3 class="warn" style="font-size: 0.95em;">Installer</h3>
+      <ul style="font-size: 0.85em; text-align: left;">
+        <li>Delivery readiness at a glance</li>
+        <li>Per-order status breakdown</li>
+        <li>Milestone timeline</li>
+        <li>No wasted trips</li>
+      </ul>
+    </div>
+  </div>
+  <div class="fragment" style="margin-top: 28px;">
+    <div class="box" style="border-left: 4px solid var(--accent); font-size: 0.7em; max-width: 750px; margin: 0 auto; text-align: left;">
+      <strong class="accent">One platform, three audiences</strong> &mdash; each user sees exactly what they need, with the right level of detail and no exposure to internal data.
     </div>
   </div>
 </section>
